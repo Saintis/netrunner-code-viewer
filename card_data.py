@@ -106,7 +106,6 @@ def extract_data(card_set: str) -> List[CardData]:
 
             if looking_for == 'code':
                 (found_code, count) = find_boundaries(row, count, beg, end)
-
                 
                 if found_code:
                     # skip first three spaces of padding
@@ -123,8 +122,6 @@ def extract_data(card_set: str) -> List[CardData]:
                         card_name = None
                         card_code = ""
                         line_count = 1
-                    
-                        
 
     # print found stuff
     print_data(data, card_set)
