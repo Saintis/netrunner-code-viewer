@@ -13,7 +13,8 @@ card_sets = ["agendas", "assets", "operations", "upgrades", "ice",
 def print_data(data: List[CardData], card_set: str):
     path = "csv/" + card_set + ".csv"
     with open(path, "w", encoding="utf-8", newline='') as output_file:
-        writer = csv.writer(output_file, quotechar='`', lineterminator='\n')
+        writer = csv.writer(output_file, lineterminator='\n')
+        writer.writerow(["name", "code"]) # add header
         for card_data in data:
             writer.writerow(card_data)
 
