@@ -80,8 +80,9 @@ def extract_data(card_set: str) -> List[CardData]:
             if looking_for == 'name':
                 try:
                     beg = row.index('"') + 1
-                    end = row.index('"', beg)
-                    card_name = row[beg:end]
+                    # avoids hitting " in card name
+                    end = row.index('"\n', beg)
+                    card_name = row[beg:end].replace('\\"', '"')
                     looking_for = 'start'
                 except ValueError:
                     # no string found, continue to next line

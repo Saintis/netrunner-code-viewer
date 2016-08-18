@@ -39,7 +39,7 @@ Argus Security: Protection Guaranteed,`{:events {:agenda-stolen
                               (effect-completed state side eid nil))
                           (do (damage state :runner eid :meat 2 {:unboostable true :card card})
                               (system-msg state side "suffers 2 meat damage"))))}}}`
-Armand \,`{:events {:pre-start-game {:req (req (= side :runner))
+Armand "Geist" Walker: Tech Lord,`{:events {:pre-start-game {:req (req (= side :runner))
                            :effect (effect (gain :link 1))}
           :runner-trash {:req (req (and (= side :runner) (= (second targets) :ability-cost)))
                          :msg "draw a card"
@@ -53,7 +53,7 @@ Blue Sun: Powering the Future,`{:flags {:corp-phase-12 (req (and (not (:disabled
                              (move state side target :hand)
                              (system-msg state side (str "adds " (:title target) " to HQ and gains " cost " [Credits]"))
                              (swap! state update-in [:bonus] dissoc :cost)))}]}`
-Boris \,`{:events (let [bor {:req (req (let [facs (frequencies (map :faction (all-installed state :runner)))
+Boris "Syfr" Kovac: Crafty Veteran,`{:events (let [bor {:req (req (let [facs (frequencies (map :faction (all-installed state :runner)))
                                     an (get facs "Anarch" 0)
                                     sh (get facs "Shaper" 0)
                                     cr (get facs "Criminal" 0)]
@@ -224,7 +224,7 @@ Information Dynamics: All You Need To Know,`{:events (let [inf {:req (req (let [
                     :effect (effect (tag-runner :runner 1))}]
            {:agenda-scored inf :agenda-stolen inf
             :pre-start-game {:effect draft-points-target}})}`
-Jamie \,`{:events (let [jam {:req (req (let [facs (frequencies (map :faction (all-installed state :runner)))
+Jamie "Bzzz" Micken: Techno Savant,`{:events (let [jam {:req (req (let [facs (frequencies (map :faction (all-installed state :runner)))
                                     an (get facs "Anarch" 0)
                                     sh (get facs "Shaper" 0)
                                     cr (get facs "Criminal" 0)]
@@ -290,7 +290,7 @@ Jinteki Biotech: Life Imagined,`{:events {:pre-first-turn {:req (req (= side :co
                                       :choices {:req can-be-advanced?}
                                       :effect (effect (add-prop target :advance-counter 4 {:placed true}))} card nil)))
                              (update! state side (assoc (get-card state card) :biotech-used true))))}]}`
-Kate \,`{:events {:pre-start-game {:req (req (= side :runner))
+Kate "Mac" McCaffrey: Digital Tinker,`{:events {:pre-start-game {:req (req (= side :runner))
                            :effect (effect (gain :link 1))}
           :pre-install {:req (req (and (#{"Hardware" "Program"} (:type target))
                                        (not (get-in @state [:per-turn (:cid card)]))))
@@ -300,7 +300,7 @@ Kate \,`{:events {:pre-start-game {:req (req (= side :runner))
                            :silent (req true)
                            :msg (msg "reduce the install cost of " (:title target) " by 1 [Credits]")
                            :effect (req (swap! state assoc-in [:per-turn (:cid card)] true))}}}`
-Ken \,`{:events {:play-event {:req (req (has-subtype? target "Run")) :once :per-turn
+Ken "Express" Tenma: Disappeared Clone,`{:events {:play-event {:req (req (has-subtype? target "Run")) :once :per-turn
                        :msg "gain 1 [Credits]" :effect (effect (gain :credit 1))}}}`
 Khan: Savvy Skiptracer,`{:events {:pass-ice
           {:once :per-turn
@@ -436,7 +436,7 @@ Reina Roja: Freedom Fighter,`{:events {:pre-start-game {:req (req (= side :runne
                     :effect (effect (rez-cost-bonus 1))}
           :rez {:req (req (and (ice? target) (not (get-in @state [:per-turn (:cid card)]))))
                            :effect (req (swap! state assoc-in [:per-turn (:cid card)] true))}}}`
-Rielle \,`{:abilities [{:req (req (and (:run @state)
+Rielle "Kit" Peddler: Transhuman,`{:abilities [{:req (req (and (:run @state)
                              (:rezzed (get-card state current-ice))))
               :once :per-turn :msg (msg "make " (:title current-ice) " gain code gate until the end of the run")
               :effect (req (let [ice current-ice

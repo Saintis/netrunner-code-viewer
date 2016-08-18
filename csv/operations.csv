@@ -150,7 +150,7 @@ Cerebral Cast,`{:req (req (:successful-run runner-reg))
 Cerebral Static,`{:msg "disable the Runner's identity"
  :effect (effect (disable-identity :runner))
  :leave-play (effect (enable-identity :runner))}`
-\,`{:events {:agenda-scored {:msg "add it to their score area and gain 1 agenda point"
+"Clones are not People",`{:events {:agenda-scored {:msg "add it to their score area and gain 1 agenda point"
                           :effect (effect (as-agenda :corp card 1))}}}`
 Closed Accounts,`{:req (req tagged)
  :msg (msg "force the Runner to lose all " (:credit runner) " [Credits]")

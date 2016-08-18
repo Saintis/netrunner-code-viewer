@@ -48,9 +48,9 @@ Breach,`(auto-icebreaker ["Barrier"]
                                :req (req (#{:hq :rd :archives} (first (:server run))))
                                :msg "break 3 barrier subroutines"}
                               (strength-pump 2 4)]})`
-Cerberus \,(cerberus "Sentry")
-Cerberus \,(cerberus "Code Gate")
-Cerberus \,(cerberus "Barrier")
+Cerberus "Cuj.0" H3,(cerberus "Sentry")
+Cerberus "Rex" H2,(cerberus "Code Gate")
+Cerberus "Lady" H1,(cerberus "Barrier")
 Chameleon,`{:prompt "Choose one subtype"
  :choices ["Barrier" "Code Gate" "Sentry"]
  :msg (msg "choose " target)
