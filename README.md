@@ -15,3 +15,7 @@ Run the jekyll server as described on the [Quickstart](https://jekyllrb.com/docs
 ## License
 
 Standard MIT license. See LICENSE.md file for details.
+
+## Theme
+
+Uses a slightly modified version of the [Minima](https://github.com/jekyll/minima) theme ([MIT license](https://raw.githubusercontent.com/jekyll/minima/master/LICENSE.txt))
