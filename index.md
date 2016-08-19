@@ -14,6 +14,8 @@ Currently only the code snippets specific to cards are available to browsing.
 
 Run the python scripts to generate markdown pages for each card type, and the data used to populate the pages.
 
+Alternatively run the Makefile with `make`. This will run all the python scripts automatically (and in the correct order).
+
 Run the jekyll server as described on the [Quickstart](https://jekyllrb.com/docs/quickstart/).
 
 ## License
