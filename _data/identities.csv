@@ -75,8 +75,8 @@ Cerebral Imaging: Infinite Frontiers,"{:effect (req (when (> (:turn @state) 1)
 Chaos Theory: Wünderkind,"{:effect (effect (gain :memory 1))
  :leave-play (effect (lose :runner :memory 1))}"
 Chronos Protocol: Selective Mind-mapping,"{:events
- {:corp-turn-begins {:effect (effect (enable-corp-damage-choice))}
-  :runner-turn-begins {:effect (effect (enable-corp-damage-choice))}
+ {:corp-phase-12 {:effect (effect (enable-corp-damage-choice))}
+  :runner-phase-12 {:effect (effect (enable-corp-damage-choice))}
   :pre-resolve-damage
   {:once :per-turn
    :delayed-completion true
@@ -306,6 +306,7 @@ Jinteki Biotech: Life Imagined,"{:events {:pre-first-turn {:req (req (= side :co
 Khan: Savvy Skiptracer,"{:events {:pass-ice
           {:once :per-turn
            :effect (req (when (some (fn [c] (has? c :subtype ""Icebreaker"")) (:hand runner))
+                          (install-cost-bonus state side [:credit -1])
                           (resolve-ability state side
                             {:prompt ""Choose an icebreaker to install from your Grip""
                              :choices {:req #(and (in-hand? %) (has-subtype? % ""Icebreaker""))}
@@ -356,8 +357,8 @@ Nasir Meidan: Cyber Explorer,"{:events {:pre-start-game {:req (req (= side :runn
                                (swap! state update-in [:bonus] dissoc :cost))))}]}"
 NBN: Controlling the Message,"{:events {:runner-trash
           {:delayed-completion true
-           :once :per-turn
-           :req (req (and (card-is? target :side :corp)
+           :req (req (and (first-event state side :runner-trash)
+                          (card-is? target :side :corp)
                           (installed? target)))
            :effect (req (show-wait-prompt state :runner ""Corp to use NBN: Controlling the Message"")
                         (continue-ability
@@ -421,7 +422,8 @@ Null: Whistleblower,"{:abilities [{:once :per-turn
               :msg (msg ""trash "" (:title target) "" and reduce the strength of "" (:title current-ice)
                         "" by 2 for the remainder of the run"")
               :effect (effect (update! (assoc card :null-target current-ice))
-                              (update-ice-strength current-ice))}]
+                              (update-ice-strength current-ice)
+                              (trash target {:unpreventable true}))}]
  :events {:pre-ice-strength
           {:req (req (= (:cid target) (get-in card [:null-target :cid])))
            :effect (effect (ice-strength-bonus -2 target))}
