@@ -13,16 +13,15 @@
 # you will see them accessed via {{ site.title }}, {{ site.email }}, and so on.
 # You can create any custom variable you would like, and they will be accessible
 # in the templates via {{ site.myvariable }}.
-title: Card Code Viewer for jinteki.net
+title: Netrunner Code Viewer
 description: > # this means to ignore newlines until "baseurl:"
-  Provides the implementation code for netrunner cards in a more accessible format than the source
-  for jinteki.net
+  Intends to allow more convenient source code exploration for jinteki.net
 baseurl: "" # the subpath of your site, e.g. /blog
-url: "http://saintis.github.io" # the base hostname & protocol for your site
-github_username:  saintis
+url: "http://netrunner-code-viewer.github.io" # the base hostname & protocol for your site
+github_username: saintis
 
 # exclude python stuff
-exclude: ["csv", "clj", "*.py"]
+exclude: ["csv", "clj", "*.py", "README.md", "LICENSE.md"]
 
 # Build settings
 markdown: kramdown
