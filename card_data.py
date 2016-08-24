@@ -1,22 +1,24 @@
 #! python3
 # Program to extract card code from the netrunner source
-import csv
+import csv, json
 from typing import Tuple, List
 
 CardData = Tuple[str, str]
 
-clj_src_path = "clj/"
-card_sets = ["agendas", "assets", "operations", "upgrades", "ice",
-              "events", "programs", "icebreakers", "resources", "hardware",
-              "identities"]
-
 def print_data(data: List[CardData], card_set: str):
+    " Print the list of card data to csv file. Also adds the code "
     path = "_data/" + card_set + ".csv"
+    card_code_dict = {}
+    with open("card_id_dict.json", encoding="utf-8") as f:
+        card_id_dict = json.loads(f.read())
+    
     with open(path, "w", encoding="utf-8", newline='') as output_file:
         writer = csv.writer(output_file, lineterminator='\n')
-        writer.writerow(["name", "code"]) # add header
+        writer.writerow(["id", "name", "code"]) # add header
         for card_data in data:
-            writer.writerow(card_data)
+            [name, card_code] = card_data
+            nrdb_id = card_id_dict[name]
+            writer.writerow([nrdb_id, name, card_code])
 
 def find_boundaries(string: str, count: int, beg='{', end='}') \
         -> Tuple[str, int]:
@@ -48,11 +50,11 @@ def find_boundaries(string: str, count: int, beg='{', end='}') \
     # reached end of string
     return (string, count)
 
-def extract_data(card_set: str) -> List[CardData]:
+def extract_data(card_set: str, clj_dir="clj/") -> List[CardData]:
     " Extracts the card and code pairs found for the specified card set "
 
     print("Extracting", card_set)
-    file_path = clj_src_path + "cards-" + card_set + ".clj"
+    file_path = clj_dir + "cards-" + card_set + ".clj"
     def_string = "(def cards-" + card_set
 
     data = []
@@ -129,5 +131,8 @@ def extract_data(card_set: str) -> List[CardData]:
     print_data(data, card_set)
 
 if __name__ == "__main__":
+    card_sets = ["agendas", "assets", "operations", "upgrades", "ice",
+                 "events", "programs", "icebreakers", "resources", "hardware",
+                 "identities"]
     for card_set in card_sets:
         extract_data(card_set)

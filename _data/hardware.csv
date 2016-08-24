@@ -1,6 +1,6 @@
-name,code
-Akamatsu Mem Chip,{:in-play [:memory 1]}
-Archives Interface,"{:events
+id,name,code
+01038,Akamatsu Mem Chip,{:in-play [:memory 1]}
+07044,Archives Interface,"{:events
  {:successful-run
   {:delayed-completion true
    :req (req (= target :archives))
@@ -16,10 +16,10 @@ Archives Interface,"{:events
                                         :choices (req (:discard corp))
                                         :msg (msg ""remove "" (:title target) "" from the game"")
                                         :effect (effect (move :corp target :rfg))} card nil))}}} card nil))}}}"
-Astrolabe,"{:in-play [:memory 1]
+06079,Astrolabe,"{:in-play [:memory 1]
  :events {:server-created {:msg ""draw 1 card""
                            :effect (effect (draw :runner))}}}"
-Autoscripter,"{:events {:runner-install {:silent (req true)
+06076,Autoscripter,"{:events {:runner-install {:silent (req true)
                            :req (req (and (is-type? target ""Program"")
                                           (= (:active-player @state) :runner)
                                           ;; only trigger when played a programm from grip
@@ -31,10 +31,10 @@ Autoscripter,"{:events {:runner-install {:silent (req true)
                            :msg ""gain [Click]"" :effect (effect (gain :click 1))}
           :unsuccessful-run {:effect (effect (trash card)
                                              (system-msg ""trashes Autoscripter""))}}}"
-Blackguard,"{:in-play [:memory 2]
+04085,Blackguard,"{:in-play [:memory 2]
  :events {:expose {:msg (msg ""attempt to force the rez of "" (:title target))
                    :effect (effect (rez :corp target))}}}"
-Bookmark,"{:abilities [{:label ""Host up to 3 cards from your Grip facedown""
+08106,Bookmark,"{:abilities [{:label ""Host up to 3 cards from your Grip facedown""
               :cost [:click 1] :msg ""host up to 3 cards from their Grip facedown""
               :choices {:max 3 :req #(and (:side % ""Runner"")
                                           (in-hand? %))}
@@ -48,10 +48,10 @@ Bookmark,"{:abilities [{:label ""Host up to 3 cards from your Grip facedown""
                              (move state side c :hand))
                            (update! state side (dissoc card :hosted))
                            (trash state side (get-card state card) {:cause :ability-cost}))}]}"
-Box-E,{:in-play [:memory 2 :hand-size-modification 2]}
-Brain Cage,"{:in-play [:hand-size-modification 3]
+06055,Box-E,{:in-play [:memory 2 :hand-size-modification 2]}
+08049,Brain Cage,"{:in-play [:hand-size-modification 3]
  :effect (effect (damage eid :brain 1 {:card card}))}"
-Brain Chip,"(let [runner-points (fn [s] (max (or (get-in s [:runner :agenda-point]) 0) 0))]
+09039,Brain Chip,"(let [runner-points (fn [s] (max (or (get-in s [:runner :agenda-point]) 0) 0))]
   {:effect (req (gain state :runner
                       :memory (runner-points @state)
                       :hand-size-modification (runner-points @state))
@@ -66,7 +66,7 @@ Brain Chip,"(let [runner-points (fn [s] (max (or (get-in s [:runner :agenda-poin
                     (lose state :runner
                           :memory (runner-points @state)
                           :hand-size-modification (runner-points @state)))})"
-Capstone,"{:abilities [{:req (req (> (count (:hand runner)) 0))
+04068,Capstone,"{:abilities [{:req (req (> (count (:hand runner)) 0))
               :cost [:click 1]
               :effect (req (let [handsize (count (:hand runner))]
                              (resolve-ability state side
@@ -85,7 +85,7 @@ Capstone,"{:abilities [{:req (req (> (count (:hand runner)) 0))
                                                    (join "", "" (map :title targets)) "" and draw ""
                                                    (- (count (get-in @state [:runner :hand])) remaining) "" cards""))))}
                               card nil)))}]}"
-Chop Bot 3000,"{:flags {:runner-phase-12 (req (>= 2 (count (all-installed state :runner))))}
+07045,Chop Bot 3000,"{:flags {:runner-phase-12 (req (>= 2 (count (all-installed state :runner))))}
  :abilities [{:msg (msg ""trash "" (:title target))
               :choices {:req #(and (= (:side %) ""Runner"") (:installed %))}
               :effect (effect (trash target)
@@ -95,13 +95,13 @@ Chop Bot 3000,"{:flags {:runner-phase-12 (req (>= 2 (count (all-installed state 
                                  :effect (req (if (= target ""Draw 1 card"")
                                                 (draw state side)
                                                 (lose state side :tag 1)))} card nil))}]}"
-Clone Chip,"{:abilities [{:prompt ""Choose a program to install from your Heap"" :msg (msg ""install "" (:title target))
+03038,Clone Chip,"{:abilities [{:prompt ""Choose a program to install from your Heap"" :msg (msg ""install "" (:title target))
               :priority true :show-discard true
               :req (req (not (seq (get-in @state [:runner :locked :discard]))))
               :choices {:req #(and (is-type? % ""Program"")
                                    (= (:zone %) [:discard]))}
               :effect (effect (trash card {:cause :ability-cost}) (runner-install target))}]}"
-Comet,"{:in-play [:memory 1]
+08027,Comet,"{:in-play [:memory 1]
  :events {:play-event {:req (req (first-event state side :play-event))
                        :effect (req (system-msg state :runner
                                                 (str ""can play another event without spending a [Click] by clicking on Comet""))
@@ -113,7 +113,7 @@ Comet,"{:in-play [:memory 1]
               :msg (msg ""play "" (:title target))
               :effect (effect (play-instant target)
                               (update! (dissoc (get-card state card) :comet-event)))}]}"
-Cortez Chip,"{:abilities [{:prompt ""Choose a piece of ICE""
+02005,Cortez Chip,"{:abilities [{:prompt ""Choose a piece of ICE""
               :choices {:req ice?}
               :effect (req (let [ice target]
                              (update! state side (assoc card :cortez-target ice))
@@ -127,10 +127,10 @@ Cortez Chip,"{:abilities [{:prompt ""Choose a piece of ICE""
                                                   :corp-turn-ends {:effect (effect (unregister-events card))}}
                                                  (get-card state card)))}
  :events {:pre-rez nil :runner-turn-ends nil :corp-turn-ends nil}}"
-Cyberfeeder,{:recurring 1}
-CyberSolutions Mem Chip,{:in-play [:memory 2]}
-Cybsoft MacroDrive,{:recurring 1}
-Deep Red,"{:in-play [:memory 3]
+01005,Cyberfeeder,{:recurring 1}
+04086,CyberSolutions Mem Chip,{:in-play [:memory 2]}
+06098,Cybsoft MacroDrive,{:recurring 1}
+04042,Deep Red,"{:in-play [:memory 3]
  :events {:runner-install
           {:optional
            {:req (req (has-subtype? target ""Caïssa""))
@@ -145,9 +145,9 @@ Deep Red,"{:in-play [:memory 3]
                                                             (play-ability {:card (get-card state caissa) :ability 0}))}
                                           card nil)))}
             :no-ability {:effect (req (effect-completed state side eid card))}}}}}"
-Desperado,"{:in-play [:memory 1]
+01024,Desperado,"{:in-play [:memory 1]
  :events {:successful-run {:msg ""gain 1 [Credits]"" :effect (effect (gain :credit 1))}}}"
-Dinosaurus,"{:abilities [{:label ""Install a non-AI icebreaker on Dinosaurus""
+02048,Dinosaurus,"{:abilities [{:label ""Install a non-AI icebreaker on Dinosaurus""
               :req (req (empty? (:hosted card))) :cost [:click 1]
               :prompt ""Choose a non-AI icebreaker in your Grip to install on Dinosaurus""
               :choices {:req #(and (has-subtype? % ""Icebreaker"")
@@ -171,7 +171,7 @@ Dinosaurus,"{:abilities [{:label ""Install a non-AI icebreaker on Dinosaurus""
           :card-moved {:req (req (= (:cid target) (:dino-breaker (get-card state card))))
                        :effect (effect (update! (dissoc card :dino-breaker))
                                        (lose :memory (:memoryunits target)))}}}"
-Doppelgänger,"{:in-play [:memory 1]
+02064,Doppelgänger,"{:in-play [:memory 1]
  :events {:runner-install
           {:req (req (= card target))
            :silent (req true)
@@ -186,7 +186,7 @@ Doppelgänger,"{:in-play [:memory 1]
                           :choices (req runnable-servers)
                           :msg (msg ""make a run on "" target)
                           :effect (effect (update! (dissoc card :dopp-active)) (run target))}}}}}"
-Dorm Computer,"{:data {:counter {:power 4}}
+08024,Dorm Computer,"{:data {:counter {:power 4}}
  :abilities [{:counter-cost [:power 1]
               :cost [:click 1]
               :req (req (not run))
@@ -198,16 +198,16 @@ Dorm Computer,"{:data {:counter {:power 4}}
                     :effect (effect (tag-prevent Integer/MAX_VALUE))
                     :msg ""avoid all tags during the run""}
           :run-ends {:effect (effect (update! (dissoc card :dorm-active)))}}}"
-Dyson Fractal Generator,{:recurring 1}
-Dyson Mem Chip,{:in-play [:memory 1 :link 1]}
-e3 Feedback Implants,"{:abilities [{:cost [:credit 1] :msg ""break 1 additional subroutine""}]}"
-Ekomind,"{:effect (req (swap! state assoc-in [:runner :memory] (count (get-in @state [:runner :hand])))
+04103,Dyson Fractal Generator,{:recurring 1}
+02028,Dyson Mem Chip,{:in-play [:memory 1 :link 1]}
+02024,e3 Feedback Implants,"{:abilities [{:cost [:credit 1] :msg ""break 1 additional subroutine""}]}"
+06093,Ekomind,"{:effect (req (swap! state assoc-in [:runner :memory] (count (get-in @state [:runner :hand])))
               (add-watch state :ekomind (fn [k ref old new]
                                           (let [hand-size (count (get-in new [:runner :hand]))]
                                             (when (not= (count (get-in old [:runner :hand])) hand-size)
                                               (swap! ref assoc-in [:runner :memory] hand-size))))))
  :leave-play (req (remove-watch state :ekomind))}"
-EMP Device,"{:abilities [{:req (req (:run @state))
+10020,EMP Device,"{:abilities [{:req (req (:run @state))
               :msg ""prevent the Corp from rezzing more than 1 piece of ICE for the remainder of the run""
               :effect (effect (register-events
                                 {:rez {:req (req (ice? target))
@@ -220,19 +220,19 @@ EMP Device,"{:abilities [{:req (req (:run @state))
                                                              true))))}
                                  :run-ends {:effect (effect (unregister-events card))}} (assoc card :zone '(:discard)))
                               (trash card {:cause :ability-cost}))}]}"
-Feedback Filter,"{:prevent {:damage [:net :brain]}
+03037,Feedback Filter,"{:prevent {:damage [:net :brain]}
  :abilities [{:cost [:credit 3] :msg ""prevent 1 net damage"" :effect (effect (damage-prevent :net 1))}
              {:label ""[Trash]: Prevent up to 2 brain damage""
               :msg ""prevent up to 2 brain damage""
               :effect (effect (trash card {:cause :ability-cost})
                               (damage-prevent :brain 2))}]}"
-Forger,"{:prevent {:tag [:all]}
+08065,Forger,"{:prevent {:tag [:all]}
  :in-play [:link 1]
  :abilities [{:msg ""avoid 1 tag"" :label ""[Trash]: Avoid 1 tag""
               :effect (effect (tag-prevent 1) (trash card {:cause :ability-cost}))}
              {:msg ""remove 1 tag"" :label ""[Trash]: Remove 1 tag""
               :effect (effect (trash card {:cause :ability-cost}) (lose :tag 1))}]}"
-GPI Net Tap,"{:abilities [{:req (req (and (ice? current-ice) (not (rezzed? current-ice))))
+11003,GPI Net Tap,"{:abilities [{:req (req (and (ice? current-ice) (not (rezzed? current-ice))))
               :delayed-completion true
               :effect (req (when-completed (expose state side current-ice)
                                            (continue-ability
@@ -242,11 +242,11 @@ GPI Net Tap,"{:abilities [{:req (req (and (ice? current-ice) (not (rezzed? curre
                                                                        :effect (effect (trash card {:unpreventable true})
                                                                                        (jack-out nil))}}}
                                              card nil)))}]}"
-Grimoire,"{:in-play [:memory 2]
+01006,Grimoire,"{:in-play [:memory 2]
  :events {:runner-install {:silent (req true)
                            :req (req (has-subtype? target ""Virus""))
                            :effect (effect (add-counter target :virus 1))}}}"
-Heartbeat,"{:in-play [:memory 1]
+09032,Heartbeat,"{:in-play [:memory 1]
  :prevent {:damage [:meat :net :brain]}
  :abilities [{:msg ""prevent 1 damage""
               :choices {:req #(and (= (:side %) ""Runner"") (:installed %))}
@@ -255,11 +255,11 @@ Heartbeat,"{:in-play [:memory 1]
                               (damage-prevent :brain 1)
                               (damage-prevent :meat 1)
                               (damage-prevent :net 1))}]}"
-HQ Interface,{:in-play [:hq-access 1]}
-Lemuria Codecracker,"{:abilities [{:cost [:click 1 :credit 1] :req (req (some #{:hq} (:successful-run runner-reg)))
+02085,HQ Interface,{:in-play [:hq-access 1]}
+01023,Lemuria Codecracker,"{:abilities [{:cost [:click 1 :credit 1] :req (req (some #{:hq} (:successful-run runner-reg)))
               :choices {:req installed?} :effect (effect (expose eid target))
               :msg ""expose 1 card""}]}"
-LLDS Processor,"{:events
+04066,LLDS Processor,"{:events
   (let [llds {:effect (req (let [cards (:llds-target card)]
                              (update! state side (dissoc card :llds-target))
                              (doseq [c cards]
@@ -272,15 +272,15 @@ LLDS Processor,"{:events
                                       (update-breaker-strength target))}
      :pre-breaker-strength {:req (req (some #(= (:cid target) (:cid %)) (:llds-target card)))
                             :effect (effect (breaker-strength-bonus 1))}})}"
-Lockpick,{:recurring 1}
-Logos,"{:in-play [:memory 1 :hand-size-modification 1]
+04006,Lockpick,{:recurring 1}
+05037,Logos,"{:in-play [:memory 1 :hand-size-modification 1]
  :events {:agenda-scored
           {:player :runner :prompt ""Choose a card"" :msg (msg ""add 1 card to their Grip from their Stack"")
            :choices (req (cancellable (:deck runner)))
            :effect (effect (trigger-event :searched-stack nil)
                            (shuffle! :deck)
                            (move target :hand))}}}"
-Maya,"{:in-play [:memory 2]
+10007,Maya,"{:in-play [:memory 2]
  :abilities [{:once :per-turn
               :label ""Move this accessed card to bottom of R&D""
               :req (req (when-let [c (:card (first (get-in @state [:runner :prompt])))]
@@ -306,8 +306,8 @@ Maya,"{:in-play [:memory 2]
                                               (when-let [run (:run @state)]
                                                 (when (and (:ended run) (empty? (get-in @state [:runner :prompt])))
                                                   (handle-end-run state :runner))))} card nil))}]}"
-MemStrips,{:in-play [:memory 3]}
-Mirror,"{:in-play [:memory 2]
+07046,MemStrips,{:in-play [:memory 3]}
+11005,Mirror,"{:in-play [:memory 2]
  :events {:successful-run
           {:delayed-completion true
            :req (req (= target :rd))
@@ -317,7 +317,7 @@ Mirror,"{:in-play [:memory 2]
                               :msg (msg ""replace 1 spent [Recurring Credits] on "" (:title target))
                               :effect (effect (add-prop target :rec-counter 1))}
                             card nil))}}}"
-Monolith,"(let [mhelper (fn mh [n] {:prompt ""Choose a program to install""
+03036,Monolith,"(let [mhelper (fn mh [n] {:prompt ""Choose a program to install""
                           :choices {:req #(and (is-type? % ""Program"")
                                                (in-hand? %))}
                           :effect (req (install-cost-bonus state side [:credit -4])
@@ -335,16 +335,16 @@ Monolith,"(let [mhelper (fn mh [n] {:prompt ""Choose a program to install""
                 :effect (effect (trash target)
                                 (damage-prevent :brain 1)
                                 (damage-prevent :net 1))}]})"
-Muresh Bodysuit,"{:events {:pre-damage {:once :per-turn :once-key :muresh-bodysuit
+02044,Muresh Bodysuit,"{:events {:pre-damage {:once :per-turn :once-key :muresh-bodysuit
                        :req (req (= target :meat))
                        :msg ""prevent the first meat damage this turn""
                        :effect (effect (damage-prevent :meat 1))}}}"
-Net-Ready Eyes,"{:effect (effect (damage eid :meat 2 {:unboostable true :card card})) :msg ""suffer 2 meat damage""
+08047,Net-Ready Eyes,"{:effect (effect (damage eid :meat 2 {:unboostable true :card card})) :msg ""suffer 2 meat damage""
  :events {:run {:choices {:req #(and (installed? %)
                                      (has-subtype? % ""Icebreaker""))}
                 :msg (msg ""give "" (:title target) "" +1 strength"")
                 :effect (effect (pump target 1 :all-run))}}}"
-NetChip,"{:abilities [{:label ""Install a program on NetChip""
+10024,NetChip,"{:abilities [{:label ""Install a program on NetChip""
               :req (req (empty? (:hosted card)))
               :effect (req (let [n (count (filter #(= (:title %) (:title card)) (all-installed state :runner)))]
                              (resolve-ability state side
@@ -381,7 +381,7 @@ NetChip,"{:abilities [{:label ""Install a program on NetChip""
                                                        :hosted-programs
                                                        (remove #(= (:cid target) %) (:hosted-programs card))))
                                        (lose :memory (:memoryunits target)))}}}"
-Omni-drive,"{:recurring 1
+03039,Omni-drive,"{:recurring 1
  :abilities [{:label ""Install and host a program of 1[Memory Unit] or less on Omni-drive""
               :req (req (empty? (:hosted card)))
               :cost [:click 1]
@@ -398,20 +398,20 @@ Omni-drive,"{:recurring 1
                                    (installed? %))}
               :msg (msg ""host "" (:title target))
               :effect (effect (host card target))}]}"
-Plascrete Carapace,"{:data [:counter {:power 4}]
+02009,Plascrete Carapace,"{:data [:counter {:power 4}]
  :prevent {:damage [:meat]}
  :abilities [{:counter-cost [:power 1]
               :msg ""prevent 1 meat damage""
               :effect (req (damage-prevent state side :meat 1)
                            (when (= (get-in card [:counter :power]) 0)
                              (trash state side card {:unpreventable true})))}]}"
-Prepaid VoicePAD,{:recurring 1}
-Public Terminal,{:recurring 1}
-Q-Coherence Chip,"{:effect (effect (gain :memory 1)) :leave-play (effect (lose :memory 1))
+04029,Prepaid VoicePAD,{:recurring 1}
+05038,Public Terminal,{:recurring 1}
+05052,Q-Coherence Chip,"{:effect (effect (gain :memory 1)) :leave-play (effect (lose :memory 1))
  :events (let [e {:msg ""trash itself"" :req (req (= (last (:zone target)) :program))
                   :effect (effect (trash card))}]
            {:runner-trash e :corp-trash e})}"
-Qianju PT,"{:flags {:runner-phase-12 (req true)}
+07054,Qianju PT,"{:flags {:runner-phase-12 (req true)}
  :abilities [{:label ""Lose [Click], avoid 1 tag (start of turn)""
               :once :per-turn
               :req (req (:runner-phase-12 @state))
@@ -424,8 +424,8 @@ Qianju PT,"{:flags {:runner-phase-12 (req true)}
                     :msg ""avoid the first tag received""
                     :effect (effect (tag-prevent 1)
                                     (update! (dissoc card :qianju-active)))}}}"
-R&D Interface,{:in-play [:rd-access 1]}
-Rabbit Hole,"{:in-play [:link 1]
+02107,R&D Interface,{:in-play [:rd-access 1]}
+01039,Rabbit Hole,"{:in-play [:link 1]
  :effect
  (effect (resolve-ability
           {:optional {:req (req (some #(when (= (:title %) ""Rabbit Hole"") %) (:deck runner)))
@@ -435,7 +435,7 @@ Rabbit Hole,"{:in-play [:link 1]
                                                   (trigger-event state side :searched-stack nil)
                                                   (shuffle! state :runner :deck)
                                                   (runner-install state side c)))}}} card nil))}"
-Ramujan-reliant 550 BMI,"{:prevent {:damage [:net :brain]}
+10002,Ramujan-reliant 550 BMI,"{:prevent {:damage [:net :brain]}
  :abilities [{:req (req (not-empty (:deck runner)))
               :effect (req (let [n (count (filter #(= (:title %) (:title card)) (all-installed state :runner)))]
                              (resolve-ability state side
@@ -447,7 +447,7 @@ Ramujan-reliant 550 BMI,"{:prevent {:damage [:net :brain]}
                                                 (damage-prevent :brain target)
                                                 (mill :runner target)
                                                 (trash card {:cause :ability-cost}))} card nil)))}]}"
-Record Reconstructor,"{:events
+04028,Record Reconstructor,"{:events
  {:successful-run
   {:req (req (= (get-in @state [:run :server]) [:archives]))
    :effect (req (let [rr card]
@@ -458,9 +458,9 @@ Record Reconstructor,"{:events
                                         :msg (msg ""add "" (:title target) "" to the top of R&D"")
                                         :effect (req (move state :corp target :deck {:front true}))}
                                       rr nil))})))}}}"
-Reflection,"{:in-play [:memory 1 :link 1]
+10041,Reflection,"{:in-play [:memory 1 :link 1]
  :events {:jack-out {:msg (msg ""force the Corp to reveal "" (:title (first (shuffle (:hand corp)))) "" from HQ"")}}}"
-Replicator,"{:events {:runner-install
+02088,Replicator,"{:events {:runner-install
           {:interactive (req (and (is-type? target ""Hardware"")
                                   (some #(= (:title %) (:title target)) (:deck runner))))
            :silent (req (not (and (is-type? target ""Hardware"")
@@ -472,7 +472,7 @@ Replicator,"{:events {:runner-install
                                                     (shuffle! :deck)
                                                     (move (some #(when (= (:title %) (:title target)) %)
                                                                 (:deck runner)) :hand))}}}}}"
-Security Chip,"{:abilities [{:label ""[Trash]: Add [Link] strength to a non-Cloud icebreaker until the end of the run""
+09046,Security Chip,"{:abilities [{:label ""[Trash]: Add [Link] strength to a non-Cloud icebreaker until the end of the run""
               :msg (msg ""add "" (:link runner) "" strength to "" (:title target) "" until the end of the run"")
               :req (req (:run @state))
               :prompt ""Choose one non-Cloud icebreaker""
@@ -492,24 +492,24 @@ Security Chip,"{:abilities [{:label ""[Trash]: Add [Link] strength to a non-Clou
                              (pump state side t (:link runner) :all-run)
                              (update-breaker-strength state side t))
                            (trash state side (get-card state card) {:cause :ability-cost}))}]}"
-Security Nexus,"{:in-play [:memory 1 :link 1]
+09047,Security Nexus,"{:in-play [:memory 1 :link 1]
  :abilities [{:req (req (:run @state))
               :msg ""force the Corp to initiate a trace""
               :label ""Trace 5 - Give the Runner 1 tag and end the run""
               :trace {:once :per-turn :base 5 :msg ""give the Runner 1 tag and end the run""
                       :effect (effect (tag-runner :runner 1) (end-run))
                       :unsuccessful {:msg ""bypass the current ICE""}}}]}"
-Silencer,{:recurring 1}
-Skulljack,"{:effect (effect (damage eid :brain 1 {:card card}))
+04104,Silencer,{:recurring 1}
+08042,Skulljack,"{:effect (effect (damage eid :brain 1 {:card card}))
  :events {:pre-trash {:effect (effect (trash-cost-bonus -1))}}}"
-Spinal Modem,"{:in-play [:memory 1]
+02002,Spinal Modem,"{:in-play [:memory 1]
  :recurring 2
  :events {:successful-trace {:req (req run) :effect (effect (damage eid :brain 1 {:card card}))}}}"
-Sports Hopper,"{:in-play [:link 1]
+10064,Sports Hopper,"{:in-play [:link 1]
  :abilities [{:label ""Draw 3 cards""
               :msg ""draw 3 cards""
               :effect (effect (trash card {:cause :ability-cost}) (draw 3))}]}"
-Spy Camera,"{:abilities [{:cost [:click 1]
+10042,Spy Camera,"{:abilities [{:cost [:click 1]
               :delayed-completion true
               :label ""Look at the top X cards of your Stack""
               :msg ""look at the top X cards of their Stack and rearrange them""
@@ -526,14 +526,14 @@ Spy Camera,"{:abilities [{:cost [:click 1]
               :msg ""trash it and look at the top card of R&D""
               :effect (effect (prompt! card (str ""The top card of R&D is "" (:title (first (:deck corp)))) [""OK""] {})
                               (trash card {:cause :ability-cost}))}]}"
-The Personal Touch,"{:hosting {:req #(and (has-subtype? % ""Icebreaker"")
+01040,The Personal Touch,"{:hosting {:req #(and (has-subtype? % ""Icebreaker"")
                       (installed? %))}
  :effect (effect (update-breaker-strength (:host card)))
  :events {:pre-breaker-strength {:req (req (= (:cid target) (:cid (:host card))))
                                  :effect (effect (breaker-strength-bonus 1))}}}"
-The Toolbox,"{:in-play [:link 2 :memory 2]
+01041,The Toolbox,"{:in-play [:link 2 :memory 2]
  :recurring 2}"
-Titanium Ribs,"{:events
+08045,Titanium Ribs,"{:events
  {:pre-resolve-damage
   {:delayed-completion true
    :req (req (and (> (last targets) 0)
@@ -565,7 +565,7 @@ Titanium Ribs,"{:events
                  (system-msg (str ""suffers 2 meat damage from installing Titanium Ribs""))
                  (damage eid :meat 2 {:card card}))
  :leave-play (req (swap! state update-in [:damage] dissoc :damage-choose-runner))}"
-Turntable,"{:in-play [:memory 1]
+08043,Turntable,"{:in-play [:memory 1]
  :events {:agenda-stolen
           {:interactive (req true)
            :req (req (not (empty? (:scored corp))))
@@ -590,7 +590,7 @@ Turntable,"{:in-play [:memory 1]
                                                         (effect-completed state side eid card)))}
                                         card targets))}}}
                          card targets)))}}}"
-Unregistered S&W 35,"{:abilities
+05039,Unregistered S&W 35,"{:abilities
  [{:cost [:click 2] :req (req (some #{:hq} (:successful-run runner-reg)))
    :label ""trash a Bioroid, Clone, Executive or Sysop"" :prompt ""Choose a Bioroid, Clone, Executive, or Sysop to trash""
    :choices {:req #(and (rezzed? %)
@@ -601,7 +601,7 @@ Unregistered S&W 35,"{:abilities
                         (or (and (= (last (:zone %)) :content) (is-remote? (second (:zone %))))
                             (= (last (:zone %)) :onhost)))}
    :msg (msg ""trash "" (:title target)) :effect (effect (trash target))}]}"
-Vigil,"(let [ability {:req (req (and (:runner-phase-12 @state) (= (count (:hand corp)) (hand-size state :corp))))
+07047,Vigil,"(let [ability {:req (req (and (:runner-phase-12 @state) (= (count (:hand corp)) (hand-size state :corp))))
                :msg ""draw 1 card""
                :label ""Draw 1 card (start of turn)""
                :once :per-turn
@@ -609,5 +609,5 @@ Vigil,"(let [ability {:req (req (and (:runner-phase-12 @state) (= (count (:hand 
 {:in-play [:memory 1]
  :events {:runner-turn-begins ability}
  :abilities [ability]})"
-Window,"{:abilities [{:cost [:click 1] :msg ""draw 1 card from the bottom of their Stack""
+05040,Window,"{:abilities [{:cost [:click 1] :msg ""draw 1 card from the bottom of their Stack""
               :effect (effect (move (last (:deck runner)) :hand))}]}"

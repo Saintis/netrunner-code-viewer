@@ -1,10 +1,6 @@
 #! python3
 # Script to generate the markdown files for the jekyll webpage
 
-card_sets = ["agendas", "assets", "operations", "upgrades", "ice",
-              "events", "programs", "icebreakers", "resources", "hardware",
-              "identities"]
-
 def make_md(card_set: str):
     " make the markdown file for specified card set "
     path = card_set + ".md"
@@ -28,6 +24,10 @@ def make_md(card_set: str):
         # card name
         f.write("## {{ card_data.name }}\n\n")
 
+        # netrunnerdb link
+        f.write("[Card #{{card_data.id}}]")
+        f.write("(https://netrunnerdb.com/en/card/{{ card_data.id }})\n\n")
+
         # card code
         f.write("{% highlight clojure %}\n")
         f.write("{{ card_data.code }}\n")
@@ -37,5 +37,9 @@ def make_md(card_set: str):
         f.write("{% endfor %}\n")
 
 if __name__ == "__main__":
+    card_sets = ["agendas", "assets", "operations", "upgrades", "ice",
+                 "events", "programs", "icebreakers", "resources", "hardware",
+                 "identities"]
+    
     for card_set in card_sets:
         make_md(card_set)
