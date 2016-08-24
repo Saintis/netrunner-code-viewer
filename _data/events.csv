@@ -103,10 +103,9 @@ Corporate Scandal,"{:msg ""give the Corp 1 additional bad publicity""
  :effect (req (swap! state update-in [:corp :has-bad-pub] inc))
  :leave-play (req (swap! state update-in [:corp :has-bad-pub] dec))}"
 Cyber Threat,"{:prompt ""Choose a server"" :choices (req runnable-servers)
- :effect (req (let [serv target
-                    runtgt [(last (server->zone state serv))]
-                    ices (get-in @state (concat [:corp :servers] runtgt [:ices]))]
-                (resolve-ability
+ :delayed-completion true
+ :effect (req (let [serv target]
+                (continue-ability
                   state :corp
                   {:optional
                    {:prompt (msg ""Rez a piece of ICE protecting "" serv ""?"")
@@ -114,12 +113,7 @@ Cyber Threat,"{:prompt ""Choose a server"" :choices (req runnable-servers)
                                   :choices {:req #(and (not (:rezzed %))
                                                        (= (last (:zone %)) :ices))}
                                   :effect (req (rez state :corp target nil))}
-                    :no-ability {:effect (req (swap! state assoc :per-run nil
-                                                     :run {:server runtgt :position (count ices)
-                                                           :access-bonus 0 :run-effect nil})
-                                              (gain-run-credits state :runner (:bad-publicity corp))
-                                              (swap! state update-in [:runner :register :made-run] #(conj % (first runtgt)))
-                                              (trigger-event state :runner :run runtgt))
+                    :no-ability {:effect (effect (game.core/run eid serv nil card))
                                  :msg (msg ""make a run on "" serv "" during which no ICE can be rezzed"")}}}
                  card nil)))}"
 Data Breach,"{:delayed-completion true
@@ -132,7 +126,7 @@ Data Breach,"{:delayed-completion true
                                   (game.core/run state side eid :rd nil card)
                                   (effect-completed state side eid))
                                 (update! state side (dissoc card :run-again)))))
- :events {:successful-run-ends {:optional {:req (req (= :rd target))
+ :events {:successful-run-ends {:optional {:req (req (= [:rd] (:server target)))
                                            :prompt ""Make another run on R&D?""
                                            :yes-ability {:effect (effect (update! (assoc card :run-again true)))}}}}}"
 Day Job,"{:additional-cost [:click 3]

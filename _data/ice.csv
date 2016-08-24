@@ -266,7 +266,9 @@ Flare,"{:abilities [(trace-ability 6 {:label ""Trash 1 hardware, do 2 meat damag
                                                                 (trash state side target {:cause :subroutine})
                                                                 (do (damage state side eid :meat 2 {:unpreventable true
                                                                                          :card card})
-                                                                    (end-run state side))))}
+                                                                    (end-run state side))))
+                                                 :cancel-effect (effect (damage eid :meat 2 {:unpreventable true :card card})
+                                                                        (end-run))}
                                                 card nil))})]}"
 Galahad,(grail-ice end-the-run)
 Gemini,(constellation-ice (do-net-damage 1))
