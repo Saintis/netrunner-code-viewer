@@ -9,8 +9,6 @@ make_md: card_data make_md.py
 index: gen_index.py
 	python3 gen_index.py
 
-card_data: update_clj card_data.py
-	python3 card_data.py
-  
-update_clj:
+card_data: update_clj.sh card_data.py
 	./update_clj.sh
+	python3 card_data.py

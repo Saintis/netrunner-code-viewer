@@ -12,11 +12,24 @@ Currently only the code snippets specific to cards are available to browsing.
 
 ## Usage
 
+Run the shell script to update the source files stored in `clj/` (might fail if this folder is missing, just create it with `mkdir clj`)
+
 Run the python scripts to generate markdown pages for each card type, and the data used to populate the pages.
 
-Alternatively run the Makefile with `make`. This will run all the python scripts automatically (and in the correct order).
+Run the jekyll server as described on the [Quickstart](https://jekyllrb.com/docs/quickstart/), normally `bundle exec jekyll serve`. If it fails try `bundle install` first, otherwise consult the jekyll documentation.
 
-Run the jekyll server as described on the [Quickstart](https://jekyllrb.com/docs/quickstart/).
+Alternatively run the Makefile with `make`. This will run all the python scripts automatically (and in the correct order). 
+
+Ensure that the shell script has the proper permissions for it to be run through `make`, `chmod +x update_clj.sh` should do it.
+
+You can also run the server with `make serve` (runs same stuff as `make` and then starts the server).
+
+Requires:
+
+ - `python3` for the python scripts
+ - `svn` for the shell script
+ - `jekyll` for the server
+ - `bundler` (might have to specifically install this to get the jekyll stuff to work...)
 
 ## License
 
