@@ -305,7 +305,9 @@ id,name,code
                                                            (str ""trashes "" (join "", "" (map :title targets)))))}
                                 card nil))))}]}"
 04013,Himitsu-Bako,"{:abilities [end-the-run {:msg ""add it to HQ"" :cost [:credit 1] :effect (effect (move card :hand))}]}"
-04117,Hive,{:abilities [end-the-run]}
+04117,Hive,"{:abilities [{:label ""Gain subroutines""
+              :msg   (msg ""gain "" (min 5 (max 0 (- 5 (:agenda-point corp 0)))) "" subroutines"")}
+             end-the-run]}"
 01061,Heimdall 1.0,"{:abilities [(do-brain-damage 1)
              end-the-run]}"
 03015,Heimdall 2.0,"{:abilities [(do-brain-damage 1)
@@ -538,9 +540,10 @@ id,name,code
               :trace {:base 4
                       :choices {:req #(and (installed? %)
                                            (is-type? % ""Program""))}
-                      :msg (msg ""add "" (:title target) "" to the bottom of the Runner's Stack"")
-                      :effect (effect (move :runner target :deck))}}
-             {:label ""Give the Runner 1 tag""
+                      :msg     (msg ""add "" (:title target) "" to the bottom of the Runner's Stack"")
+                      :effect  (effect (move :runner target :deck))}}
+             {:label  ""Give the Runner 1 tag""
+              :msg    ""give the Runner 1 tag""
               :effect (effect (tag-runner :runner 1))}]}"
 04115,Shinobi,"{:effect take-bad-pub
  :abilities [(trace-ability 1 (do-net-damage 1))
@@ -602,6 +605,7 @@ id,name,code
                                    (is-type? % ""Program"")
                                    (has-subtype? % ""AI""))}}]}"
 06009,Taurus,(constellation-ice trash-hardware)
+09017,TL;DR,"{:abilities [{:msg ""duplicate subroutines on next piece of ICE encountered this run""}]}"
 02017,TMI,"{:trace {:base 2
          :msg ""keep TMI rezzed""
          :unsuccessful {:effect (effect (derez card))}}
