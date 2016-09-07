@@ -384,7 +384,8 @@ id,name,code
                                (doseq [c (take target cs)]
                                  (move state side c :hand)))}
                  card nil)))}"
-06046,Manhunt,"{:events {:successful-run {:req (req (first-event state side :successful-run))
+06046,Manhunt,"{:events {:successful-run {:interactive (req true)
+                           :req (req (first-event state side :successful-run))
                            :trace {:base 2 :msg ""give the Runner 1 tag""
                                    :effect (effect (tag-runner :runner 1))}}}}"
 05014,Medical Research Fundraiser,"{:msg ""gain 8 [Credits]. The Runner gains 3 [Credits]""

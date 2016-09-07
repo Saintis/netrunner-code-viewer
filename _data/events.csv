@@ -349,7 +349,8 @@ id,name,code
 08041,Immolation Script,"{:effect (effect (run :archives nil card) (register-events (:events (card-def card))
                                                            (assoc card :zone '(:discard))))
  :events {:successful-run
-          {:req (req (= target :archives))
+          {:silent (req true)
+           :req (req (= target :archives))
            :effect (req (when-completed
                           (resolve-ability state side
                             {:delayed-completion true
@@ -478,7 +479,8 @@ id,name,code
  :effect (effect (draw 3) (lose :tag 2))}"
 05035,Legwork,"{:effect (effect (run :hq nil card) (register-events (:events (card-def card))
                                                      (assoc card :zone '(:discard))))
- :events {:successful-run {:effect (effect (access-bonus 2))}
+ :events {:successful-run {:silent (req true)
+                           :effect (effect (access-bonus 2))}
           :run-ends {:effect (effect (unregister-events card))}}}"
 04064,Leverage,"{:req (req (some #{:hq} (:successful-run runner-reg)))
  :player :corp
@@ -830,7 +832,8 @@ id,name,code
                    card targets))}"
 01036,The Makers Eye,"{:effect (effect (run :rd nil card) (register-events (:events (card-def card))
                                                      (assoc card :zone '(:discard))))
- :events {:successful-run {:effect (effect (access-bonus 2))}
+ :events {:successful-run {:silent (req true)
+                           :effect (effect (access-bonus 2))}
           :run-ends {:effect (effect (unregister-events card))}}}"
 10077,The Noble Path,"{:effect (req (doseq [c (:hand runner)]
                 (trash state side c))

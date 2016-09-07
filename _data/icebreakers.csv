@@ -41,6 +41,10 @@ id,name,code
              {:cost [:credit 2]
               :msg ""add 2 strength (using at least 1 stealth [Credits])""
               :effect (effect (pump card 2)) :pump 2}]}"
+11068,Blackstone,"{:abilities [(break-sub 1 1 ""barrier"")
+             {:cost [:credit 3]
+              :msg ""add 4 strength (using at least 1 stealth [Credits])""
+              :effect (effect (pump card 4 :all-run)) :pump 4}]}"
 10062,Brahman,"(auto-icebreaker [""All""]
                  {:abilities [(break-sub 1 2 ""ICE"")
                               (strength-pump 2 1)]})"
