@@ -10,8 +10,8 @@ md: make_md.jl
 	julia make_md.jl
 
 # Generate the index page - run when README.md changes
-index: gen_index.py
-	python3 gen_index.py
+index: gen_index.jl
+	julia gen_index.jl
 
 # Updates the card data - run when jinteki.net code is updated
 card_data: update_clj.sh card_data.py
