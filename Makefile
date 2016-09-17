@@ -14,9 +14,9 @@ index: gen_index.jl
 	julia gen_index.jl
 
 # Updates the card data - run when jinteki.net code is updated
-card_data: update_clj.sh card_data.py
-	./update_clj.sh
-	python3 card_data.py
+card_data: update_clj.sh card_data.jl
+	bash update_clj.sh
+	julia card_data.jl
 
 # Updates the netrunnerdb id dictionary - run when new cards are added
 id_dict: make_id_dict.py
