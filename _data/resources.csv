@@ -144,6 +144,15 @@ id,name,code
   {:flags {:drip-economy true}
    :abilities [ability]
    :events {:runner-turn-begins ability}})"
+11065,Blockade Runner,"{:abilities [{:cost [:click 2]
+              :msg ""draw 3 cards and shuffle 1 card from their Grip back into their Stack""
+              :effect (effect (draw 3)
+                              (resolve-ability
+                                {:prompt ""Choose a card to shuffle back into your Stack""
+                                 :choices (req (:hand runner))
+                                 :effect (effect (move target :deck)
+                                                 (shuffle! :deck))}
+                               card nil))}]}"
 03050,Borrowed Satellite,{:in-play [:hand-size-modification 1 :link 1]}
 10010,Chatterjee University,"{:abilities [{:cost [:click 1]
               :label ""Place 1 power counter""

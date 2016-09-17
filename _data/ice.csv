@@ -20,7 +20,8 @@ id,name,code
                                                   card nil))}
                       :no-ability {:effect (req (system-msg state :corp ""declines to force the Runner to encounter Archangel"")
                                                 (clear-wait-prompt state :runner))}}} card nil))}
- :abilities [(trace-ability 6 {:choices {:req installed?}
+ :abilities [(trace-ability 6 {:choices {:req #(and (installed? %)
+                                                    (card-is? % :side :runner))}
                                :label ""Add 1 installed card to the Runner's Grip""
                                :msg ""add 1 installed card to the Runner's Grip""
                                :effect (effect (move :runner target :hand true)
@@ -369,6 +370,17 @@ id,name,code
                                :msg ""give the Runner 1 tag and do 1 brain damage""
                                :effect (effect (damage eid :brain 1 {:card card})
                                                (tag-runner :runner 1))})]}"
+06027,Information Overload,"{:abilities [{:label ""Gain subroutines""
+              :msg (msg ""gain "" (:tag runner 0) "" subroutines"")}
+             (tag-trace 1)
+             trash-installed]}"
+11094,IP Block,"{:abilities [(assoc give-tag :req (req (not-empty (filter #(has-subtype? % ""AI"") (all-installed state :runner))))
+                             :label ""Give the Runner 1 tag if there is an installed AI"")
+             (tag-trace 3)
+             {:label ""End the run if the Runner is tagged""
+              :req (req tagged)
+              :msg ""end the run""
+              :effect (effect (end-run))}]}"
 06041,IQ,"{:effect (req (add-watch state (keyword (str ""iq"" (:cid card)))
                 (fn [k ref old new]
                   (let [handsize (count (get-in new [:corp :hand]))]
@@ -379,10 +391,6 @@ id,name,code
  :strength-bonus (req (count (:hand corp)))
  :rez-cost-bonus (req (count (:hand corp)))
  :leave-play (req (remove-watch state (keyword (str ""iq"" (:cid card)))))}"
-06027,Information Overload,"{:abilities [{:label ""Gain subroutines""
-              :msg (msg ""gain "" (:tag runner 0) "" subroutines"")}
-             (tag-trace 1)
-             trash-installed]}"
 04057,Ireress,"{:abilities [{:label ""Gain subroutines""
               :msg (msg ""gain "" (:bad-publicity corp 0) "" subroutines"")}
              {:msg ""make the Runner lose 1 [Credits]""

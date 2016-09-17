@@ -18,8 +18,7 @@ id,name,code
                             (toast state :runner
                                    (str ""Please use /rfg to remove any directives other than the 3 you intend to start with."")))))}}}"
 02083,Andromeda: Dispossessed Ristie,"{:events {:pre-start-game {:req (req (= side :runner))
-                           :effect (effect (gain :link 1)
-                                           (draw 4 {:suppress-event true}))}}
+                           :effect (effect (draw 4 {:suppress-event true}))}}
  :mulligan (effect (draw 4 {:suppress-event true}))}"
 09029,Apex: Invasive Predator,"(let [ability {:prompt ""Select a card to install facedown""
                :label ""Install a card facedown (start of turn)""
@@ -40,9 +39,7 @@ id,name,code
                               (effect-completed state side eid nil))
                           (do (damage state :runner eid :meat 2 {:unboostable true :card card})
                               (system-msg state side ""suffers 2 meat damage""))))}}}"
-08063,"Armand ""Geist"" Walker: Tech Lord","{:events {:pre-start-game {:req (req (= side :runner))
-                           :effect (effect (gain :link 1))}
-          :runner-trash {:req (req (and (= side :runner) (= (second targets) :ability-cost)))
+08063,"Armand ""Geist"" Walker: Tech Lord","{:events {:runner-trash {:req (req (and (= side :runner) (= (second targets) :ability-cost)))
                          :msg ""draw a card""
                          :effect (effect (draw 1))}}}"
 06068,Blue Sun: Powering the Future,"{:flags {:corp-phase-12 (req (and (not (:disabled card))
@@ -116,21 +113,18 @@ id,name,code
                  (lose :runner :hand-size-modification 1))
  :leave-play (effect (gain :hand-size-modification 1)
                      (gain :runner :hand-size-modification 1))}"
-07028,Edward Kim: Humanitys Hammer,"{:events {:pre-start-game {:req (req (= side :runner))
-                           :effect (effect (gain :link 1))}
-          :access {:once :per-turn
+07028,Edward Kim: Humanitys Hammer,"{:events {:access {:once :per-turn
                    :req (req (and (is-type? target ""Operation"")
                                   (turn-flag? state side card :can-trash-operation)))
                    :effect (effect (trash target))
                    :msg (msg ""trash "" (:title target))}
           :successful-run-ends {:req (req (and (= (:server target) [:archives])
+                                               (nil? (:replace-access (:run-effect target)))
                                                (not= (:max-access target) 0)
                                                (seq (filter #(is-type? % ""Operation"") (:discard corp)))))
                                 :effect (effect (register-turn-flag! card :can-trash-operation (constantly false)))}}}"
 11066,"Ele ""Smoke"" Scovak: Cynosure of the Net",{:recurring 1}
-03030,Exile: Streethawk,"{:events {:pre-start-game {:req (req (= side :runner))
-                           :effect (effect (gain :link 1))}
-          :runner-install {:req (req (and (is-type? target ""Program"")
+03030,Exile: Streethawk,"{:events {:runner-install {:req (req (and (is-type? target ""Program"")
                                           (some #{:discard} (:previous-zone target))))
                            :msg (msg ""draw a card"")
                            :effect (effect (draw 1))}}}"
@@ -167,6 +161,21 @@ id,name,code
    :effect (req (when-not (first-event state side :agenda-stolen)
                   (register-turn-flag! state side card :can-steal haarp)))
    :leave-play (effect (clear-turn-flag! card :can-steal))})"
+11072,Haas-Bioroid: Architects of Tomorrow,"{:events {:pass-ice
+          {:once :per-turn
+           :req (req (and (rezzed? target)
+                          (has-subtype? target ""Bioroid"")))
+           :effect (req (when (some (fn [c] (and (has? c :subtype ""Bioroid"") (not (rezzed? c)))) (all-installed state :corp))
+                          (show-wait-prompt state :runner ""Corp to use Haas-Bioroid: Architects of Tomorrow"")
+                          (resolve-ability state side
+                            {:prompt ""Choose a bioroid to rez"" :player :corp
+                             :choices {:req #(and (has-subtype? % ""Bioroid"") (not (rezzed? %)))}
+                             :msg (msg ""rez "" (:title target))
+                             :cancel-effect (effect (clear-wait-prompt :runner))
+                             :effect (effect (rez-cost-bonus -4)
+                                             (rez target)
+                                             (clear-wait-prompt :runner))}
+                           card nil)))}}}"
 01054,Haas-Bioroid: Engineering the Future,"{:events {:corp-install {:once :per-turn :msg ""gain 1 [Credits]""
                          :effect (effect (gain :credit 1))}}}"
 02010,Haas-Bioroid: Stronger Together,"{:events {:pre-ice-strength {:req (req (and (ice? target) (has-subtype? target ""Bioroid"")))
@@ -211,9 +220,7 @@ id,name,code
                :msg ""gain 2 [Credits]""
                :effect (effect (gain :credit 2))}]
   {:flags {:drip-economy true}
-   :events {:pre-start-game {:req (req (= side :runner))
-                             :effect (effect (gain :link 1))}
-            :runner-turn-begins ability}
+   :events {:runner-turn-begins ability}
    :abilities [ability]})"
 06105,Industrial Genomics: Growing Solutions,"{:events {:pre-trash {:effect (effect (trash-cost-bonus
                                         (count (filter #(not (:seen %)) (:discard corp)))))}}}"
@@ -294,9 +301,7 @@ id,name,code
                                       :choices {:req can-be-advanced?}
                                       :effect (effect (add-prop target :advance-counter 4 {:placed true}))} card nil)))
                              (update! state side (assoc (get-card state card) :biotech-used true))))}]}"
-01033,"Kate ""Mac"" McCaffrey: Digital Tinker","{:events {:pre-start-game {:req (req (= side :runner))
-                           :effect (effect (gain :link 1))}
-          :pre-install {:req (req (and (#{""Hardware"" ""Program""} (:type target))
+01033,"Kate ""Mac"" McCaffrey: Digital Tinker","{:events {:pre-install {:req (req (and (#{""Hardware"" ""Program""} (:type target))
                                        (not (get-in @state [:per-turn (:cid card)]))))
                         :effect (effect (install-cost-bonus [:credit -1]))}
           :runner-install {:req (req (and (#{""Hardware"" ""Program""} (:type target))
@@ -346,9 +351,7 @@ id,name,code
                                       (some #(card-flag? % :runner-turn-draw true) (all-installed state :runner))))}
    :events {:runner-turn-begins ability}
    :abilities [ability]})"
-06017,Nasir Meidan: Cyber Explorer,"{:events {:pre-start-game {:req (req (= side :runner))
-                           :effect (effect (gain :link 1))}
-          :rez {:req (req (and (:run @state)
+06017,Nasir Meidan: Cyber Explorer,"{:events {:rez {:req (req (and (:run @state)
                                ;; check that the rezzed item is the encountered ice
                                (= (:cid target)
                                   (:cid (get-card state current-ice)))))
@@ -365,7 +368,8 @@ id,name,code
                                (swap! state update-in [:bonus] dissoc :cost))))}]}"
 11017,NBN: Controlling the Message,"{:events {:runner-trash
           {:delayed-completion true
-           :req (req (and (first-event state side :runner-trash)
+           :req (req (and (let [trashes (flatten (turn-events state side :runner-trash))]
+                            (empty? (filter #(card-is? % :side :corp) trashes)))
                           (card-is? target :side :corp)
                           (installed? target)))
            :effect (req (show-wait-prompt state :runner ""Corp to use NBN: Controlling the Message"")
@@ -385,9 +389,7 @@ id,name,code
 02114,NBN: The World is Yours*,"{:effect (effect (gain :hand-size-modification 1))
  :leave-play (effect (lose :hand-size-modification 1))}"
 06005,Near-Earth Hub: Broadcast Center,"{:events {:server-created {:msg ""draw 1 card"" :once :per-turn :effect (effect (draw 1))}}}"
-10040,Nero Severn: Information Broker,"{:events {:pre-start-game {:req (req (= side :runner))
-                           :effect (effect (gain :link 1))}}
- :abilities [{:req (req (has-subtype? current-ice ""Sentry""))
+10040,Nero Severn: Information Broker,"{:abilities [{:req (req (has-subtype? current-ice ""Sentry""))
               :once :per-turn
               :msg ""jack out when encountering a sentry""
               :effect (effect (jack-out nil))}]}"
@@ -442,9 +444,7 @@ id,name,code
                         :once :per-turn
                         :effect (effect (gain :corp :credit 1))}}}"
 06052,Quetzal: Free Spirit,"{:abilities [{:once :per-turn :msg ""break 1 barrier subroutine""}]}"
-04041,Reina Roja: Freedom Fighter,"{:events {:pre-start-game {:req (req (= side :runner))
-                           :effect (effect (gain :link 1))}
-          :pre-rez {:req (req (and (ice? target) (not (get-in @state [:per-turn (:cid card)]))))
+04041,Reina Roja: Freedom Fighter,"{:events {:pre-rez {:req (req (and (ice? target) (not (get-in @state [:per-turn (:cid card)]))))
                     :effect (effect (rez-cost-bonus 1))}
           :rez {:req (req (and (ice? target) (not (get-in @state [:per-turn (:cid card)]))))
                 :effect (req (swap! state assoc-in [:per-turn (:cid card)] true))}}}"
@@ -492,8 +492,7 @@ id,name,code
                      "" into R&D"")
            :effect (effect (move :corp target :deck)
                            (shuffle! :corp :deck))}}}"
-09045,Sunny Lebeau: Security Specialist,"{:events {:pre-start-game {:req (req (= side :runner))
-                           :effect (effect (gain :link 2))}}}"
+09045,Sunny Lebeau: Security Specialist,{}
 09001,"SYNC: Everything, Everywhere","{:effect (req (when (> (:turn @state) 1)
                 (if (:sync-front card)
                   (tag-remove-bonus state side -1)

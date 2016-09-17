@@ -57,6 +57,7 @@ id,name,code
               :choices {:req can-be-advanced?}
               :effect (effect (add-prop target :advance-counter 1 {:placed true}))}]}"
 08093,Award Bait,"{:access {:delayed-completion true
+          :req (req (not-empty (filter #(can-be-advanced? %) (all-installed state :corp))))
           :effect (effect (show-wait-prompt :runner ""Corp to place advancement tokens with Award Bait"")
                           (continue-ability
                             {:delayed-completion true
