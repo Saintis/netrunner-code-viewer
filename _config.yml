@@ -21,7 +21,7 @@ url: "https://saintis.github.io/netrunner-code-viewer/" # the base hostname & pr
 github_username: Saintis/netrunner-code-viewer
 
 # exclude python stuff
-exclude: ["csv", "clj", "*.py", "README.md", "LICENSE.md", "minima"]
+exclude: ["csv", "clj", "*.jl", "README.md", "LICENSE.md", "minima"]
 
 # Build settings
 markdown: kramdown
