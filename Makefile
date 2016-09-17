@@ -4,10 +4,10 @@ all: id_dict card_data md index
 # Serve the site using jekyll
 serve: index
 	bundle exec jekyll serve
- 
+
 # Generate the normal markdown pages - run when card_data has changed
-md: make_md.py
-	python3 make_md.py
+md: make_md.jl
+	julia make_md.jl
 
 # Generate the index page - run when README.md changes
 index: gen_index.py
