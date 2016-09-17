@@ -1,12 +1,12 @@
 ---
 layout: default
-title: Identities
-permalink: /identities/
+title: Programs
+permalink: /cards/programs/
 ---
 
-# Identities
+# Programs
 
-{% for card_data in site.data.identities %}
+{% for card_data in site.data.programs %}
 
 ## {{ card_data.name }}
 

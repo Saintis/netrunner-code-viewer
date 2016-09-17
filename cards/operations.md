@@ -1,12 +1,12 @@
 ---
 layout: default
-title: Programs
-permalink: /programs/
+title: Operations
+permalink: /cards/operations/
 ---
 
-# Programs
+# Operations
 
-{% for card_data in site.data.programs %}
+{% for card_data in site.data.operations %}
 
 ## {{ card_data.name }}
 

@@ -11,7 +11,7 @@ def print_data(data: List[CardData], card_set: str):
     card_code_dict = {}
     with open("card_id_dict.json", encoding="utf-8") as f:
         card_id_dict = json.loads(f.read())
-    
+
     with open(path, "w", encoding="utf-8", newline='') as output_file:
         writer = csv.writer(output_file, lineterminator='\n')
         writer.writerow(["id", "name", "code"]) # add header
@@ -50,7 +50,7 @@ def find_boundaries(string: str, count: int, beg='{', end='}') \
     # reached end of string
     return (string, count)
 
-def extract_data(card_set: str, clj_dir="clj/") -> List[CardData]:
+def extract_data(card_set: str, clj_dir="clj/src/") -> List[CardData]:
     " Extracts the card and code pairs found for the specified card set "
 
     print("Extracting", card_set)
@@ -58,7 +58,7 @@ def extract_data(card_set: str, clj_dir="clj/") -> List[CardData]:
     def_string = "(def cards-" + card_set
 
     data = []
-    
+
     with open(file_path, encoding="utf-8") as input_file:
 
         # look for the def that signifies the start of the card-code map
@@ -78,7 +78,7 @@ def extract_data(card_set: str, clj_dir="clj/") -> List[CardData]:
 
         # loop through remaining lines
         for row in input_file:
-            
+
             #looking for name - search for ""
             if looking_for == 'name':
                 try:
@@ -110,7 +110,7 @@ def extract_data(card_set: str, clj_dir="clj/") -> List[CardData]:
 
             if looking_for == 'code':
                 (found_code, count) = find_boundaries(row, count, beg, end)
-                
+
                 if found_code:
                     # skip first three spaces of padding
                     card_code += found_code[3:]

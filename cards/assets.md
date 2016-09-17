@@ -1,12 +1,12 @@
 ---
 layout: default
-title: Upgrades
-permalink: /upgrades/
+title: Assets
+permalink: /cards/assets/
 ---
 
-# Upgrades
+# Assets
 
-{% for card_data in site.data.upgrades %}
+{% for card_data in site.data.assets %}
 
 ## {{ card_data.name }}
 

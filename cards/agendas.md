@@ -1,12 +1,12 @@
 ---
 layout: default
-title: Icebreakers
-permalink: /icebreakers/
+title: Agendas
+permalink: /cards/agendas/
 ---
 
-# Icebreakers
+# Agendas
 
-{% for card_data in site.data.icebreakers %}
+{% for card_data in site.data.agendas %}
 
 ## {{ card_data.name }}
 

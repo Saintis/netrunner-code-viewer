@@ -1,12 +1,12 @@
 ---
 layout: default
-title: Assets
-permalink: /assets/
+title: Resources
+permalink: /cards/resources/
 ---
 
-# Assets
+# Resources
 
-{% for card_data in site.data.assets %}
+{% for card_data in site.data.resources %}
 
 ## {{ card_data.name }}
 

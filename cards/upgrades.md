@@ -1,12 +1,12 @@
 ---
 layout: default
-title: Agendas
-permalink: /agendas/
+title: Upgrades
+permalink: /cards/upgrades/
 ---
 
-# Agendas
+# Upgrades
 
-{% for card_data in site.data.agendas %}
+{% for card_data in site.data.upgrades %}
 
 ## {{ card_data.name }}
 

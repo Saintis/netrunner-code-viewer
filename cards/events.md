@@ -1,12 +1,12 @@
 ---
 layout: default
-title: Hardware
-permalink: /hardware/
+title: Events
+permalink: /cards/events/
 ---
 
-# Hardware
+# Events
 
-{% for card_data in site.data.hardware %}
+{% for card_data in site.data.events %}
 
 ## {{ card_data.name }}
 

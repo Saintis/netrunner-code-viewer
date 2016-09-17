@@ -3,7 +3,7 @@
 
 def make_md(card_set: str):
     " make the markdown file for specified card set "
-    path = card_set + ".md"
+    path = "cards/" + card_set + ".md"
 
     cap_card_set = card_set.capitalize()
 
@@ -12,7 +12,7 @@ def make_md(card_set: str):
         f.write("---\n")
         f.write("layout: default\n")
         f.write("title: {}\n".format(cap_card_set))
-        f.write("permalink: /{}/\n".format(card_set))
+        f.write("permalink: /cards/{}/\n".format(card_set))
         f.write("---\n\n")
 
         # print header
@@ -33,13 +33,13 @@ def make_md(card_set: str):
         f.write("{{ card_data.code }}\n")
         f.write("{% endhighlight %}\n\n")
 
-        
+
         f.write("{% endfor %}\n")
 
 if __name__ == "__main__":
     card_sets = ["agendas", "assets", "operations", "upgrades", "ice",
                  "events", "programs", "icebreakers", "resources", "hardware",
                  "identities"]
-    
+
     for card_set in card_sets:
         make_md(card_set)

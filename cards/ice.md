@@ -1,12 +1,12 @@
 ---
 layout: default
-title: Operations
-permalink: /operations/
+title: Ice
+permalink: /cards/ice/
 ---
 
-# Operations
+# Ice
 
-{% for card_data in site.data.operations %}
+{% for card_data in site.data.ice %}
 
 ## {{ card_data.name }}
 
