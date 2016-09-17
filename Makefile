@@ -19,5 +19,5 @@ card_data: update_clj.sh card_data.jl
 	julia card_data.jl
 
 # Updates the netrunnerdb id dictionary - run when new cards are added
-id_dict: make_id_dict.py
-	python3 make_id_dict.py
+id_dict: make_id_dict.jl
+	julia make_id_dict.jl
