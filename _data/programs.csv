@@ -1,5 +1,7 @@
 id,name,code
-08048,Analog Dreamers,"{:abilities [{:cost [:click 1] :msg ""make a run on R&D""
+08048,Analog Dreamers,"{:abilities [{:cost [:click 1]
+              :msg ""make a run on R&D""
+              :makes-run true
               :effect (effect (run :rd {:req (req (= target :rd))
                                         :replace-access
                                         {:prompt ""Choose a card to shuffle into R&D""
@@ -185,12 +187,13 @@ id,name,code
                              :delayed-completion true
                              :interactive (req true)
                              :effect (effect (continue-ability reveal card nil))}}})"
-04045,Expert Schedule Analyzer,"{:abilities
- [{:cost [:click 1] :msg ""make a run on HQ""
-   :effect (effect (run :hq {:req (req (= target :hq))
-                             :replace-access
-                             {:msg (msg ""reveal cards in HQ: ""
-                                        (join "", "" (map :title (:hand corp))))}} card))}]}"
+04045,Expert Schedule Analyzer,"{:abilities [{:cost [:click 1]
+              :msg ""make a run on HQ""
+              :makes-run true
+              :effect (effect (run :hq {:req (req (= target :hq))
+                                        :replace-access
+                                        {:msg (msg ""reveal cards in HQ: ""
+                                                   (join "", "" (map :title (:hand corp))))}} card))}]}"
 04007,False Echo,"{:abilities [{:req (req (and run
                              (< (:position run) (count run-ices))
                              (not (rezzed? current-ice))))
@@ -270,7 +273,8 @@ id,name,code
 08070,Hyperdriver,"{:abilities [{:label ""Remove Hyperdriver from the game to gain [Click] [Click] [Click]""
               :effect (effect (move card :rfg) (gain :memory 3 :click 3))
               :msg ""gain [Click] [Click] [Click]""}]}"
-02003,Imp,"{:data {:counter {:virus 2}}
+02003,Imp,"{:flags {:slow-trash (req (pos? (get-in card [:counter :virus] 0)))}
+ :data {:counter {:virus 2}}
  :abilities [{:counter-cost [:virus 1]
               :msg ""trash at no cost""
               :once :per-turn
@@ -285,13 +289,17 @@ id,name,code
 06114,Ixodidae,"{:events {:corp-loss {:req (req (= (first target) :credit)) :msg ""to gain 1 [Credits]""
                       :effect (effect (gain :runner :credit 1))}
           :purge {:effect (effect (trash card))}}}"
-04061,Keyhole,"{:abilities [{:cost [:click 1] :msg ""make a run on R&D""
+04061,Keyhole,"{:abilities [{:cost [:click 1]
+              :msg ""make a run on R&D""
+              :makes-run true
               :effect (effect (run :rd
                                 {:req (req (= target :rd))
                                  :replace-access
-                                 {:prompt ""Choose a card to trash"" :not-distinct true
+                                 {:prompt ""Choose a card to trash""
+                                  :not-distinct true
                                   :msg (msg ""trash "" (:title target))
-                                  :choices (req (take 3 (:deck corp))) :mandatory true
+                                  :choices (req (take 3 (:deck corp)))
+                                  :mandatory true
                                   :effect (effect (trash (assoc target :seen true))
                                                   (shuffle! :corp :deck))}} card))}]}"
 06014,Lamprey,"{:events {:successful-run {:req (req (= target :hq)) :msg ""force the Corp to lose 1 [Credits]""
@@ -412,11 +420,7 @@ id,name,code
                            {:prompt (msg ""Choose a subtype"")
                             :choices [""Sentry"" ""Code Gate"" ""Barrier""]
                             :msg (msg ""make "" (card-str state ice) "" gain "" (.toLowerCase target) "" until the end of the next run this turn"")
-                            :effect (effect (update! (assoc ice :subtype
-                                                                (->> (vec (.split (:subtype ice) "" - ""))
-                                                                     (cons target)
-                                                                     distinct
-                                                                     (join "" - ""))))
+                            :effect (effect (update! (assoc ice :subtype (combine-subtypes true stypes target)))
                                             (update-ice-strength (get-card state ice))
                                             (register-events {:run-ends
                                                               {:effect (effect (update! (assoc ice :subtype stypes))
@@ -573,7 +577,9 @@ id,name,code
                               (trash card {:cause :ability-cost})
                               (shuffle! :deck)
                               (runner-install target))}]}"
-01028,Sneakdoor Beta,"{:abilities [{:cost [:click 1] :msg ""make a run on Archives""
+01028,Sneakdoor Beta,"{:abilities [{:cost [:click 1]
+              :msg ""make a run on Archives""
+              :makes-run true
               :effect (effect (run :archives
                                 {:req (req (= target :archives))
                                  :successful-run
@@ -585,7 +591,7 @@ id,name,code
                                                (trigger-event state :corp :no-action)
                                                (system-msg state side
                                                            (str ""uses Sneakdoor Beta to make a successful run on HQ"")))}}
-                               card))}]}"
+                                card))}]}"
 02045,Snitch,"{:abilities [{:once :per-run :req (req (and (ice? current-ice) (not (rezzed? current-ice))))
               :delayed-completion true
               :effect (req (when-completed (expose state side current-ice)
@@ -593,7 +599,8 @@ id,name,code
                                              state side
                                              {:optional {:prompt ""Jack out?""
                                                          :yes-ability {:msg ""jack out""
-                                                                       :effect (effect (jack-out nil))}}}
+                                                                       :effect (effect (jack-out nil))}
+                                                         :no-ability {:msg ""continue the run""}}}
                                              card nil)))}]}"
 08102,Surfer,"(letfn [(surf [state cice]
           {:prompt (msg ""Choose an ICE before or after "" (:title cice))

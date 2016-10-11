@@ -84,23 +84,25 @@ id,name,code
                                                  {:req (req (= (:cid target) (:cid (:troubleshooter-target card))))
                                                   :effect (effect (ice-strength-bonus (:troubleshooter-amount card) target))}
                                :runner-turn-ends ct :corp-turn-ends ct}) card))}}"
-06048,Crisium Grid,"{:suppress {:successful-run {:req (req (and this-server (not= (:cid target) (:cid card))))}}
- :events {:successful-run {:silent (req true)
-                           :req (req this-server)
-                           :effect (req (swap! state update-in [:run :run-effect] dissoc :replace-access)
-                                        (swap! state update-in [:run] dissoc :successful)
-                                        (swap! state update-in [:runner :register :successful-run] #(rest %)))}}}"
+06048,Crisium Grid,"(let [suppress-event {:req (req (and this-server (not= (:cid target) (:cid card))))}]
+  {:suppress {:pre-successful-run suppress-event
+              :successful-run suppress-event}
+   :events {:pre-successful-run {:silent (req true)
+                                 :req (req this-server)
+                                 :effect (req (swap! state update-in [:run :run-effect] dissoc :replace-access)
+                                              (swap! state update-in [:run] dissoc :successful)
+                                              (swap! state update-in [:runner :register :successful-run] #(rest %)))}}})"
 07027,Cyberdex Virus Suite,"{:access {:delayed-completion true
           :effect (effect (show-wait-prompt :runner ""Corp to use Cyberdex Virus Suite"")
                           (continue-ability
-                            {:optional {:prompt ""Purge viruses with Cyberdex Virus Suite?""
-                                        :yes-ability {:msg (msg ""purge viruses"")
+                            {:optional {:prompt ""Purge virus counters with Cyberdex Virus Suite?""
+                                        :yes-ability {:msg (msg ""purge virus counters"")
                                                       :effect (effect (clear-wait-prompt :runner)
                                                                       (purge))}
                                         :no-ability {:effect (effect (clear-wait-prompt :runner))}}}
                             card nil))}
  :abilities [{:label ""[Trash]: Purge virus counters""
-              :msg ""purge viruses"" :effect (effect (trash card) (purge))}]}"
+              :msg ""purge virus counters"" :effect (effect (trash card) (purge))}]}"
 07026,Dedicated Technician Team,{:recurring 2}
 10034,Disposable HQ,"(letfn [(dhq [n i]
           {:req (req (pos? i))
@@ -215,20 +217,15 @@ id,name,code
                               (system-msg state side (str ""uses Mumbad City Grid to swap "" (card-str state passed-ice)
                                                           "" with "" (card-str state target)))))}]}"
 10076,Mumbad Virtual Tour,"{:access {:req (req installed)
-          :effect (req (let [trash-cost (trash-cost state side card)]
-                         (when (some #(and (= ""Imp"" (:title %))
-                                           (pos? (get-in % [:counter :virus] 0)))
-                                     (all-installed state :runner))
-                           (toast state :runner (str ""You must trash Mumbad Virtual Tour by paying its ""
-                                                     ""trash cost or using an Imp counter, if able"")))
+          :effect (req (let [trash-cost (trash-cost state side card)
+                             slow-trash (any-flag-fn? state :runner :slow-trash true)]
                          (if (and (can-pay? state :runner nil :credit trash-cost)
-                                  (empty? (filter #(or (and (= ""Imp"" (:title %))
-                                                            (pos? (get-in % [:counter :virus] 0)))
-                                                       (= ""Salsette Slums"" (:title %)))
-                                                  (all-installed state :runner))))
-                           (swap! state assoc-in [:runner :register :force-trash] true)
-                           (toast state :runner (str ""You must use any credit sources (Whizzard, Scrubber, ""
-                                                     ""Ghost Runner, Net Celebrity) to trash Mumbad Virtual Tour, if able"")))))}
+                                  (not slow-trash))
+                           (do (toast state :runner ""You have been forced to trash Mumbad Virtual Tour"" ""info"")
+                               (swap! state assoc-in [:runner :register :force-trash] true))
+                           (toast state :runner
+                                  (str ""You must trash Mumbad Virtual Tour, if able, using any available means ""
+                                       ""(Whizzard, Imp, Ghost Runner, Net Celebrity...)"")))))}
  :trash-effect {:when-unrezzed true
                 :effect (req (swap! state assoc-in [:runner :register :force-trash] false))}}"
 05021,NeoTokyo Grid,"(let [ng {:req (req (and (= (second (:zone target)) (second (:zone card)))
@@ -248,14 +245,14 @@ id,name,code
                                                               (second (:zone card)))
                                         (system-msg state :corp (str ""trashes Off the Grid"")))}}
  :leave-play (req (enable-run-on-server state card (second (:zone card))))}"
-08097,Old Hollywood Grid,"{:events {:pre-steal-cost
-          {:req (req (or (= (:zone card) (:zone target)) (= (central->zone (:zone target)) (butlast (:zone card)))))
+08097,Old Hollywood Grid,"(let [ohg {:req (req this-server)
            :effect (effect (register-run-flag!
                              card :can-steal
                              (fn [state side card]
                                (if-not (some #(= (:title %) (:title card)) (:scored runner))
                                  ((constantly false) (toast state :runner ""Cannot steal due to Old Hollywood Grid."" ""warning""))
-                                 true))))}}}"
+                                 true))))}]
+  (assoc-in ohg [:events :run] ohg))"
 04072,Panic Button,"{:init {:root ""HQ""} :abilities [{:cost [:credit 1] :label ""Draw 1 card"" :effect (effect (draw))
                                  :req (req (and run (= (first (:server run)) :hq)))}]}"
 06044,Port Anson Grid,"{:msg ""prevent the Runner from jacking out unless they trash an installed program""
@@ -295,6 +292,14 @@ id,name,code
    :events {:pre-steal-cost ab :run-ends nil}})"
 01105,Research Station,"{:init {:root ""HQ""}
  :in-play [:hand-size-modification 2]}"
+02111,Ruhr Valley,"{:events {:run {:req (req this-server)
+                :effect (effect (lose :runner :click 1))
+                :msg ""force the Runner to spend an additional [Click]""}
+          :runner-turn-begins {:req (req (> (:click-per-turn runner) 1))
+                               :effect (req (enable-run-on-server state card (second (:zone card))))}
+          :runner-spent-click {:req (req (<= 1 (:click runner)))
+                               :effect (req (prevent-run-on-server state card (second (:zone card))))}
+          :leave-play (req (enable-run-on-server state card (second (:zone card))))}}"
 09025,Rutherford Grid,"{:events {:pre-init-trace {:req (req this-server)
                            :effect (effect (init-trace-bonus 2))}}}"
 08054,Ryon Knight,"{:abilities [{:label ""[Trash]: Do 1 brain damage""

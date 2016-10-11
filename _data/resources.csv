@@ -11,7 +11,7 @@ id,name,code
                                        (let [click-losses (filter #(= :click %) (mapcat first (turn-events state side :runner-loss)))]
                                          (or (empty? click-losses)
                                              (and (= (count click-losses) 1)
-                                                  (persistent-flag? state side card :triggers-twice))))))
+                                                  (has-flag? state side :persistent :genetics-trigger-twice))))))
                         :msg ""gain [Click]"" :effect (effect (gain :runner :click 1))}}}"
 01047,Aesops Pawnshop,"{:flags {:runner-phase-12 (req (>= 2 (count (all-installed state :runner))))}
  :abilities [{:effect (req (resolve-ability
@@ -203,8 +203,8 @@ id,name,code
                                  {:msg (msg ""pay "" creds "" [Credit] and derez "" (:title c) "". Councilman is trashed"")
                                   :effect (req (lose state :runner :credit creds)
                                                (derez state :corp c)
-                                               (register-turn-flag! state side
-                                                 card :can-rez
+                                               (register-turn-flag!
+                                                 state side card :can-rez
                                                  (fn [state side card]
                                                    (if (= (:cid card) (:cid c))
                                                      ((constantly false)
@@ -269,12 +269,17 @@ id,name,code
  :events {:runner-turn-ends nil}}"
 08083,Drug Dealer,"{:flags {:runner-phase-12 (req (some #(card-flag? % :drip-economy true) (all-installed state :runner)))}
  :abilities [{:label ""Lose 1 [Credits] (start of turn)""
-              :msg ""lose 1 [Credits]""
+              :msg (msg (if (= (get-in @state [:runner :credit]) 0) ""lose 0 [Credits] (runner has no credits to lose)"" ""lose 1 [Credits]""))
               :req (req (:runner-phase-12 @state))
               :once :per-turn
               :effect (effect (lose :credit 1))}]
- :events {:corp-turn-begins {:msg ""draw 1 card"" :effect (effect (draw :runner 1))}
-          :runner-turn-begins {:msg ""lose 1 [Credits]""
+ :events {:corp-turn-begins {:msg (msg ""draw "" (if (= (count (get-in @state [:runner :deck])) 0)
+                                                ""0 cards (runner's stack is empty)""
+                                                ""1 card""))
+                             :effect (effect (draw :runner 1))}
+          :runner-turn-begins {:msg (msg ""lose "" (if (= (get-in @state [:runner :credit]) 0)
+                                                          ""0 [Credits] (runner has no credits to lose)""
+                                                          ""1 [Credits]""))
                                :once :per-turn
                                :effect (effect (lose :credit 1))}}}"
 06054,Duggars,"{:abilities [{:cost [:click 4] :effect (effect (draw 10)) :msg ""draw 10 cards""}]}"
@@ -308,9 +313,7 @@ id,name,code
    :abilities [ability]})"
 08005,Enhanced Vision,"{:events {:successful-run {:silent (req true)
                            :msg (msg ""force the Corp to reveal "" (:title (first (shuffle (:hand corp)))))
-                           :req (req (or (first-event state side :successful-run)
-                                         (and (second-event state side :successful-run)
-                                              (persistent-flag? state side card :triggers-twice))))}}}"
+                           :req (req (genetics-trigger? state side :successful-run))}}}"
 04106,Fall Guy,"{:prevent {:trash [:resource]}
  :abilities [{:label ""Prevent a resource from being trashed""
               :effect (effect (trash-prevent :resource 1) (trash card {:unpreventable true :cause :ability-cost}))}
@@ -337,6 +340,20 @@ id,name,code
               :msg (msg (let [c (first (:hosted card))]
                           (str ""add "" (:title c) "" to their score area and gain "" (get-agenda-points state :runner c)
                                "" agenda point"" (when (> (get-agenda-points state :runner c) 1) ""s""))))}]}"
+11047,Find the Truth,"{:events {:post-runner-draw {:msg (msg ""reveal that they drew: ""
+                                       (join "", "" (map :title (get-in @state [:runner :register :most-recent-drawn]))))}
+          :successful-run {:optional
+                           {:delayed-completion true
+                            :req (req (first-event state side :successful-run))
+                            :prompt ""Use Find the Truth to look at the top card of R&D?""
+                            :yes-ability {:effect (req (prompt! state :runner card (str ""The top card of R&D is ""
+                                                                                        (:title (first (:deck corp)))) [""OK""] {})
+                                                       (effect-completed state side eid))}
+                            :no-ability {:effect (req (effect-completed state side eid))}}}}}"
+11048,First Responders,"{:abilities [{:cost [:credit 2]
+              :req (req (not-empty (turn-events state side :damage)))
+              :msg ""draw 1 card""
+              :effect (effect (draw))}]}"
 08067,Gang Sign,"{:events {:agenda-scored {:delayed-completion true
                           :interactive (req true)
                           :msg (msg ""access "" (get-in @state [:runner :hq-access]) "" card""
@@ -344,15 +361,14 @@ id,name,code
                           :effect (req (let [c (take (get-in @state [:runner :hq-access]) (shuffle (:hand corp)))]
                                          (continue-ability state :runner (choose-access c '(:hq)) card nil)))}}}"
 08006,Gene Conditioning Shoppe,"{:msg ""make Genetics trigger a second time each turn""
- :effect (effect (register-persistent-flag! card :triggers-twice
-                                            (fn [state side card]
-                                              (has? card :subtype ""Genetics""))))
- :leave-play (effect (clear-persistent-flag! card :triggers-twice))}"
+ :effect (effect (register-persistent-flag! card :genetics-trigger-twice (constantly true)))
+ :leave-play (effect (clear-persistent-flag! card :genetics-trigger-twice))}"
 06040,Ghost Runner,"{:data {:counter {:credit 3}}
  :abilities [{:counter-cost [:credit 1]
               :msg ""gain 1 [Credits]""
               :req (req (:run @state))
               :effect (req (gain state side :credit 1)
+                           (trigger-event state side :spent-stealth-credit card)
                            (when (zero? (get-in card [:counter :credit] 0))
                              (trash state :runner card {:unpreventable true})))}]}"
 09051,Globalsec Security Clearance,"{:req (req (> (:link runner) 1))
@@ -431,6 +447,7 @@ id,name,code
                :once :per-turn
                :choices (req runnable-servers)
                :msg (msg ""make a run on "" target "" during which no programs can be used"")
+               :makes-run true
                :effect (effect (run target))}]
 {:flags {:runner-phase-12 (req true)}
  :install-cost-bonus (req [:credit (* -1 (:link runner))])
@@ -522,7 +539,7 @@ id,name,code
 02105,Mr. Li,"{:abilities [{:cost [:click 1]
               :msg (msg ""draw 2 cards"")
               :effect (req (draw state side 2)
-                           (let [drawn (take-last 2 (conj (take 2 (:deck runner)) (:hand runner)))]
+                           (let [drawn (get-in @state [:runner :register :most-recent-drawn])]
                              (resolve-ability
                                state side
                                {:prompt (str ""Choose 1 card to add to the bottom of the Stack"")
@@ -545,6 +562,28 @@ id,name,code
                    card nil))
  :abilities [{:msg ""draw 1 card""
               :effect (effect (trash card {:cause :ability-cost}) (draw))}]}"
+11046,Net Mercur,"{:abilities [{:counter-cost [:credit 1]
+              :msg ""gain 1 [Credits]""
+              :effect (effect (gain :credit 1)
+                              (trigger-event :spent-stealth-credit card))}]
+ :events {:spent-stealth-credit
+          {:req (req (and (:run @state)
+                          (has-subtype? target ""Stealth"")))
+           :once :per-run
+           :delayed-completion true
+           :effect (effect (show-wait-prompt :corp ""Runner to use Net Mercur"")
+                           (continue-ability
+                             {:prompt ""Place 1 [Credits] on Net Mercur or draw 1 card?""
+                              :player :runner
+                              :choices [""Place 1 [Credits]"" ""Draw 1 card""]
+                              :effect (req (if (= target ""Draw 1 card"")
+                                             (do (draw state side)
+                                                 (clear-wait-prompt state :corp)
+                                                 (system-msg state :runner (str ""uses Net Mercur to draw 1 card"")))
+                                             (do (add-counter state :runner card :credit 1)
+                                                 (clear-wait-prompt state :corp)
+                                                 (system-msg state :runner (str ""places 1 [Credits] on Net Mercur"")))))}
+                            card nil))}}}"
 09043,Neutralize All Threats,"{:in-play [:hq-access 1]
  :events {:pre-access {:req (req (and (= target :archives)
                                       (seq (filter #(not (nil? (:trash %))) (:discard corp)))))
@@ -753,7 +792,8 @@ id,name,code
  :events {:runner-turn-ends {:req (req (< (count (:hand runner)) (hand-size state :runner)))
                              :msg (msg ""draw a card"")
                              :effect (effect (draw 1))}}}"
-10059,Salsette Slums,"{:events {:runner-install
+10059,Salsette Slums,"{:flags {:slow-trash (req true)}
+ :events {:runner-install
           {:req (req (= card target))
            :silent (req true)
            :effect (effect (update! (assoc card :slums-active true)))}
@@ -780,7 +820,7 @@ id,name,code
                              (deactivate state side c)
                              (move state :corp c :rfg)
                              (pay state :runner card :credit (trash-cost state side c))
-                             (trigger-event state side :runner-trash nil)
+                             (swap! state update-in [:turn-events] #(cons [:runner-trash c] %))
                              (update! state side (dissoc card :slums-active))
                              (close-access-prompt state side)
                              (when-not (:run @state)
@@ -796,7 +836,7 @@ id,name,code
                                  :msg (msg ""remove "" (:title target) "" from the game"")
                                  :effect (req (deactivate state side target)
                                               (move state :corp target :rfg)
-                                              (trigger-event state side :runner-trash nil)
+                                              (swap! state update-in [:turn-events] #(cons [:runner-trash target] %))
                                               (update! state side (dissoc card :slums-active)))}
                                 card nil))}]}"
 03054,Same Old Thing,"{:abilities [{:cost [:click 2]
@@ -860,14 +900,10 @@ id,name,code
                                                          (remove-once #(not= (:cid %) (:cid target)) coll)))
                                  {:cause :ability-cost})
                           (runner-install state side (dissoc target :facedown))))}]}"
-08009,Symmetrical Visage,"{:events {:runner-click-draw {:req (req (or (first-event state side :runner-click-draw)
-                                            (and (second-event state side :runner-click-draw)
-                                                 (persistent-flag? state side card :triggers-twice))))
+08009,Symmetrical Visage,"{:events {:runner-click-draw {:req (req (genetics-trigger? state side :runner-click-draw))
                               :msg ""gain 1 [Credits]""
                               :effect (effect (gain :credit 1))}}}"
-08007,Synthetic Blood,"{:events {:damage {:req (req (or (first-event state side :damage)
-                                 (and (second-event state side :damage)
-                                      (persistent-flag? state side card :triggers-twice))))
+08007,Synthetic Blood,"{:events {:damage {:req (req (genetics-trigger? state side :damage))
                    :msg ""draw 1 card""
                    :effect (effect (draw :runner))}}}"
 04083,Tallie Perrault,"{:abilities [{:label ""Draw 1 card for each Corp bad publicity""

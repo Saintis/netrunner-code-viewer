@@ -305,7 +305,7 @@ id,name,code
  :choices (req (:scored runner))
  :effect (effect (forfeit target) (gain :corp :bad-publicity 1))
  :msg (msg ""forfeit "" (:title target) "" and give the Corp 1 bad publicity"")}"
-10045,"""Freedom Through Equality""","{:events {:agenda-stolen {:msg ""add it to their score area and gain 1 agenda point""
+10045,"""Freedom Through Equality""","{:events {:agenda-stolen {:msg ""add it to their score area as an agenda worth 1 agenda point""
                           :effect (effect (as-agenda :runner card 1))}}}"
 03033,Freelance Coding Contract,"{:choices {:max 5
            :req #(and (is-type? % ""Program"")
@@ -346,8 +346,8 @@ id,name,code
 07032,Ive Had Worse,"{:effect (effect (draw 3))
  :trash-effect {:req (req (#{:meat :net} target))
                 :effect (effect (draw :runner 3)) :msg ""draw 3 cards""}}"
-08041,Immolation Script,"{:effect (effect (run :archives nil card) (register-events (:events (card-def card))
-                                                           (assoc card :zone '(:discard))))
+08041,Immolation Script,"{:effect (effect (run :archives nil card)
+                 (register-events (:events (card-def card)) (assoc card :zone '(:discard))))
  :events {:successful-run
           {:silent (req true)
            :req (req (= target :archives))
@@ -544,7 +544,7 @@ id,name,code
                 (some #{:rd} (:successful-run runner-reg))
                 (some #{:archives} (:successful-run runner-reg))))
  :effect (effect (as-agenda :runner (first (:play-area runner)) 1))
- :msg ""add it to their score area and gain 1 agenda point""}"
+ :msg ""add it to their score area as an agenda worth 1 agenda point""}"
 10080,Out of the Ashes,"(letfn [(ashes-flag []
           {:runner-phase-12 {:priority -1
                              :once :per-turn
@@ -642,7 +642,11 @@ id,name,code
                                         (= (last (:zone %)) :content)
                                         (not (:rezzed %)))}
                    :msg (msg ""add "" c "" advancement tokens on a card and gain "" (* 2 c) "" [Credits]"")
-                   :effect (effect (gain :credit (* 2 c)) (add-prop :corp target :advance-counter c {:placed true}))}
+                   :effect (effect (gain :credit (* 2 c))
+                                   (add-prop :corp target :advance-counter c {:placed true})
+                                   (register-turn-flag! card :can-access
+                                                        ;; prevent access of advanced card
+                                                        (fn [_ _ card] (not (same-card? target card)))))}
                   card nil)))}"
 04081,Quest Completed,"{:req (req (and (some #{:hq} (:successful-run runner-reg))
                 (some #{:rd} (:successful-run runner-reg))
@@ -680,7 +684,7 @@ id,name,code
                      :choices (req (filter #(is-type? % ""Program"") (:discard runner)))
                      :effect (effect (runner-install target {:no-cost true}))}} card))}"
 10102,Rigged Results,"(letfn [(choose-ice []
-          {:prompt ""Choose a piece of ice to bypass""
+          {:prompt ""Choose a piece of ICE to bypass""
            :choices {:req #(ice? %)}
            :effect (final-effect (system-msg :runner (str ""chooses to bypass "" (card-str state target)))
                                  (run (second (:zone target))))})
@@ -689,7 +693,7 @@ id,name,code
            :choices [""0"" ""1"" ""2""]
            :delayed-completion true
            :effect (req (system-msg state :runner (str ""spends "" spent ""[Credit]. ""
-                                    (-> corp :user :username) "" guesses "" target ""[Credit].""))
+                                    (-> corp :user :username) "" guesses "" target ""[Credit]""))
                         (clear-wait-prompt state :runner)
                         (if (not= (str spent) target)
                           (continue-ability state :runner (choose-ice) card nil)
@@ -825,8 +829,8 @@ id,name,code
                      :effect (req (move state side (find-cid (:cid target) (all-installed state :runner))
                                         :deck {:front true}))}}
                    card targets))}"
-01036,The Makers Eye,"{:effect (effect (run :rd nil card) (register-events (:events (card-def card))
-                                                     (assoc card :zone '(:discard))))
+01036,The Makers Eye,"{:effect (effect (run :rd nil card)
+                 (register-events (:events (card-def card)) (assoc card :zone '(:discard))))
  :events {:successful-run {:silent (req true)
                            :effect (effect (access-bonus 2))}
           :run-ends {:effect (effect (unregister-events card))}}}"
@@ -859,10 +863,10 @@ id,name,code
                  (trash target)
                  (register-events (:events (card-def card)) (assoc card :zone '(:rfg)))
                  (register-persistent-flag!
-                          card :cannot-advance
+                          card :can-advance
                           (fn [state side card]
-                              ((constantly true) (toast state :corp ""Cannot advance cards this turn due to The Price of Freedom."" ""warning"")))))
- :events {:corp-turn-ends {:effect (effect (clear-persistent-flag! card :cannot-advance)
+                              ((constantly false) (toast state :corp ""Cannot advance cards this turn due to The Price of Freedom."" ""warning"")))))
+ :events {:corp-turn-ends {:effect (effect (clear-persistent-flag! card :can-advance)
                                            (unregister-events card))}}}"
 06035,Three Steps Ahead,"{:end-turn {:effect (effect (gain :credit (* 2 (count (:successful-run runner-reg)))))
             :msg (msg ""gain "" (* 2 (count (:successful-run runner-reg))) "" [Credits]"")}}"
@@ -874,11 +878,7 @@ id,name,code
            (resolve-ability
               state :runner
               {:msg (msg ""make "" (card-str state ice) "" gain sentry, code gate, and barrier until the end of the turn"")
-               :effect (effect (update! (assoc ice :subtype
-                                                   (->> (vec (.split (:subtype ice) "" - ""))
-                                                        (concat [""Sentry"" ""Code Gate"" ""Barrier""])
-                                                        distinct
-                                                        (join "" - ""))))
+               :effect (effect (update! (assoc ice :subtype (combine-subtypes true (:subtype ice) ""Sentry"" ""Code Gate"" ""Barrier"")))
                                (update-ice-strength (get-card state ice))
                                (register-events {:runner-turn-ends
                                                  {:effect (effect (update! (assoc (get-card state ice) :subtype stypes)))}}

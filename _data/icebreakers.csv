@@ -41,6 +41,25 @@ id,name,code
              {:cost [:credit 2]
               :msg ""add 2 strength (using at least 1 stealth [Credits])""
               :effect (effect (pump card 2)) :pump 2}]}"
+11042,Black Orchestra,"(let [install {:req (req (and (= (:zone card) [:discard])
+                              (rezzed? current-ice)
+                              (has-subtype? current-ice ""Code Gate"")))
+               :optional {:player :runner
+                          :prompt ""Install Black Orchestra?""
+                          :yes-ability {:effect (effect (unregister-events card)
+                                                        (runner-install :runner card))}}}
+      heap-event (req (when (= (:zone card) [:discard])
+                        (unregister-events state side card)
+                        (register-events state side
+                                         (:events (card-def card))
+                                         (assoc card :zone [:discard]))))]
+{:move-zone heap-event
+ :abilities [{:cost [:credit 3]
+              :effect (effect (pump card 2)) :pump 2
+              :msg ""add 2 strength and break up to 2 subroutines""}]
+ :events {:rez install
+          :approach-ice install
+          :run install}})"
 11068,Blackstone,"{:abilities [(break-sub 1 1 ""barrier"")
              {:cost [:credit 3]
               :msg ""add 4 strength (using at least 1 stealth [Credits])""
@@ -59,9 +78,9 @@ id,name,code
 08069,Chameleon,"{:prompt ""Choose one subtype""
  :choices [""Barrier"" ""Code Gate"" ""Sentry""]
  :msg (msg ""choose "" target)
- :effect (effect (set-prop (get-card state card) :ice-type target))
+ :effect (effect (update! (assoc card :subtype-target target)))
  :events {:runner-turn-ends {:msg ""add itself to Grip"" :effect (effect (move card :hand))}}
- :abilities [{:cost [:credit 1] :msg (msg ""break 1 "" (:ice-type card) "" subroutine"")}]}"
+ :abilities [{:cost [:credit 1] :msg (msg ""break 1 "" (:subtype-target card) "" subroutine"")}]}"
 01007,Corroder,"(auto-icebreaker [""Barrier""]
                  {:abilities [(break-sub 1 1 ""barrier"")
                               (strength-pump 1 1)]})"
@@ -71,13 +90,19 @@ id,name,code
                                 (strength-pump 1 1)]}))"
 08046,Crowbar,"(break-and-enter ""Code Gate"")"
 01051,Crypsis,"(auto-icebreaker [""All""]
-                 {:abilities [(break-sub 1 1 ""ice"")
+                 {:abilities [(break-sub 1 1 ""ICE"" (effect (update! (assoc card :crypsis-broke true))))
                               (strength-pump 1 1)
-                              {:cost [:click 1] :msg ""place 1 virus counter""
-                               :effect (effect (add-counter card :virus 1))}
-                              {:counter-cost [:virus 1]
-                               :label ""Remove 1 hosted virus counter""
-                               :msg ""remove 1 virus counter""}]})"
+                              {:cost [:click 1]
+                               :msg ""place 1 virus counter""
+                               :effect (effect (add-counter card :virus 1))}]
+                  :events (let [encounter-ends-effect {:req (req (:crypsis-broke card))
+                                                       :effect (req ((:effect breaker-auto-pump) state side eid card targets)
+                                                                    (if (pos? (get-in card [:counter :virus]))
+                                                                      (add-counter state side card :virus -1)
+                                                                      (trash state side card {:cause :self-trash}))
+                                                                    (update! state side (dissoc (get-card state card) :crypsis-broke)))}]
+                            {:pass-ice encounter-ends-effect
+                             :run-ends encounter-ends-effect})})"
 03044,Cyber-Cypher,"(auto-icebreaker [""Code Gate""]
                  {:prompt ""Choose a server where this copy of Cyber-Cypher can be used:""
                   :msg (msg ""target "" target)
@@ -95,7 +120,7 @@ id,name,code
                               (strength-pump 1 1)]})"
 02102,Darwin,"{:flags {:runner-phase-12 (req true)}
  :events {:purge {:effect (effect (update-breaker-strength card))}}
- :abilities [(break-sub 2 1 ""ice"")
+ :abilities [(break-sub 2 1 ""ICE"")
              {:label ""Place 1 virus counter (start of turn)""
               :cost [:credit 1]
               :msg ""place 1 virus counter""
@@ -170,6 +195,10 @@ id,name,code
 09050,GS Sherman M3,"(global-sec-breaker ""Barrier"")"
 09049,GS Shrike M2,"(global-sec-breaker ""Sentry"")"
 09048,GS Striker M1,"(global-sec-breaker ""Code Gate"")"
+11045,Houdini,"{:abilities [(break-sub 1 1 ""code gate"")
+             {:cost [:credit 2]
+              :msg ""add 4 strength (using at least 1 stealth [Credits])""
+              :effect (effect (pump card 4 :all-run)) :pump 4}]}"
 03048,Inti,"(auto-icebreaker [""Barrier""]
                  {:abilities [(break-sub 1 1 ""barrier"")
                               (strength-pump 2 1 :all-run)]})"
@@ -248,6 +277,15 @@ id,name,code
 02006,Peacock,"(auto-icebreaker [""Code Gate""]
                  {:abilities [(break-sub 2 1 ""code gate"")
                               (strength-pump 2 3)]})"
+11044,Peregrine,"(auto-icebreaker [""Code Gate""]
+                 {:abilities [(break-sub 1 1 ""code gate"")
+                              (strength-pump 3 3)
+                              {:label ""Derez a code gate and return Peregrine to your Grip""
+                               :cost [:credit 2]
+                               :req (req (and (rezzed? current-ice) (has-subtype? current-ice ""Code Gate"")))
+                               :msg (msg ""derez "" (:title current-ice) "" and return Peregrine to their Grip"")
+                               :effect (effect (derez current-ice)
+                                               (move card :hand))}]})"
 01046,Pipeline,"(auto-icebreaker [""Sentry""]
                  {:abilities [(break-sub 1 1 ""sentry"")
                               (strength-pump 2 1 :all-run)]})"
@@ -286,21 +324,26 @@ id,name,code
                  {:abilities [(break-sub 1 1 ""code gate"")
                               (strength-pump 1 1)]})"
 10061,Vamadeva,"(deva ""Vamadeva"")"
-01013,Wyrm,"{:abilities [{:cost [:credit 3] :msg ""break 1 subroutine on ICE with 0 or less strength""}
-             {:cost [:credit 1]
-              :label ""Give -1 strength to current ice""
-              :msg (msg ""give -1 strength to "" (:title current-ice))
-              :req (req current-ice)
-              :effect (req (update! state side
-                                    (update-in card [:wyrm-count] (fnil inc 0)))
-                           (update-ice-strength state side current-ice))}
-             (strength-pump 1 1)]
- :events (let [wy {:effect (req (update! state side (dissoc card :wyrm-count)))}]
-           {:pre-ice-strength {:req (req (and (= (:cid target) (:cid current-ice))
-                                              (:wyrm-count card)))
-                               :effect (req (let [c (:wyrm-count (get-card state card))]
-                                              (ice-strength-bonus state side (- c) target)))}
-            :pass-ice wy :run-ends wy})}"
+01013,Wyrm,"(auto-icebreaker [""All""]
+                 {:abilities [{:cost [:credit 3]
+                               :msg ""break 1 subroutine on ICE with 0 or less strength""}
+                              {:cost [:credit 1]
+                               :label ""Give -1 strength to current ice""
+                               :req (req current-ice)
+                               :msg (msg ""give -1 strength to "" (:title current-ice))
+                               :effect (effect (update! (update-in card [:wyrm-count] (fnil inc 0)))
+                                               (update-ice-strength current-ice))}
+                              (strength-pump 1 1)]
+                  :events (let [auto-pump (fn [state side eid card targets]
+                                            ((:effect breaker-auto-pump) state side eid card targets))
+                                wy {:effect (effect (update! (dissoc card :wyrm-count))
+                                                    (auto-pump eid card targets))}]
+                            {:pre-ice-strength {:req (req (and (= (:cid target) (:cid current-ice))
+                                                               (:wyrm-count card)))
+                                                :effect (effect (ice-strength-bonus (- (:wyrm-count (get-card state card))) target)
+                                                                (auto-pump eid card targets))}
+                             :pass-ice wy
+                             :run-ends wy})})"
 01014,Yog.0,"{:abilities [(break-sub 0 1 ""code gate"")]}"
 02007,ZU.13 Key Master,"(cloud-icebreaker
   (auto-icebreaker [""Code Gate""]

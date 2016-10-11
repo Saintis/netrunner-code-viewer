@@ -74,7 +74,7 @@ id,name,code
                                                  (swap! state update-in [:runner :register :made-run] #(conj % (first s)))
                                                  (trigger-event state :runner :run s)))}
                     :no-ability {:effect (effect (as-agenda :corp (last (:discard corp)) 1))
-                                 :msg ""add it to their score area and gain 1 agenda point""}}}
+                                 :msg ""add it to their score area as an agenda worth 1 agenda point""}}}
                  card nil)))}"
 01083,Anonymous Tip,"{:msg ""draw 3 cards""
  :effect (effect (draw 3))}"
@@ -87,6 +87,14 @@ id,name,code
                    :effect (final-effect (move target :hand)
                                          (system-msg (str ""adds "" (if (:seen target) (:title target) ""an unseen card"") "" to HQ"")))}
                  card nil)))}"
+11050,Ark Lockdown,"{:delayed-completion true
+ :req (req (not-empty (:discard runner)))
+ :prompt ""Name a card to remove all copies in the Heap from the game""
+ :choices (req (cancellable (:discard runner) :sorted))
+ :msg (msg ""remove all copies of "" (:title target) "" in the Heap from the game"")
+ :effect (req (doseq [c (filter #(= (:title target) (:title %)) (:discard runner))]
+                (move state side c :rfg))
+              (effect-completed state side eid card))}"
 08099,Back Channels,"{:prompt ""Choose an installed card in a server to trash""
  :choices {:req #(and (= (last (:zone %)) :content)
                       (is-remote? (second (:zone %))))}
@@ -151,7 +159,7 @@ id,name,code
 06025,Cerebral Static,"{:msg ""disable the Runner's identity""
  :effect (effect (disable-identity :runner))
  :leave-play (effect (enable-identity :runner))}"
-10052,"""Clones are not People""","{:events {:agenda-scored {:msg ""add it to their score area and gain 1 agenda point""
+10052,"""Clones are not People""","{:events {:agenda-scored {:msg ""add it to their score area as an agenda worth 1 agenda point""
                           :effect (effect (as-agenda :corp card 1))}}}"
 01084,Closed Accounts,"{:req (req tagged)
  :msg (msg ""force the Runner to lose all "" (:credit runner) "" [Credits]"")
@@ -295,6 +303,7 @@ id,name,code
          :effect (effect (tag-runner :runner 4))}}"
 11034,Hatchet Job,"{:trace {:base 5
          :choices {:req #(and (installed? %)
+                              (card-is? % :side :runner)
                               (not (has-subtype? % ""Virtual"")))}
          :msg ""add an installed non-virtual card to the Runner's grip""
          :effect (effect (move :runner target :hand true))}}"
@@ -514,6 +523,8 @@ id,name,code
                   (do (clear-wait-prompt state :runner)
                       (effect-completed state side eid card)))))}"
 08017,Predictive Algorithm,{:events {:pre-steal-cost {:effect (effect (steal-cost-bonus [:credit 2]))}}}
+11080,Preemptive Action,"{:msg ""remove Preemptive Action from the game""
+ :effect (effect (rfg-and-shuffle-rd-effect (first (:play-area corp)) 3))}"
 10029,Product Recall,"{:prompt ""Choose a rezzed asset or upgrade to trash""
  :choices {:req #(and (rezzed? %)
                       (or (is-type? % ""Asset"") (is-type? % ""Upgrade"")))}
@@ -538,17 +549,36 @@ id,name,code
                                    :choices {:req can-be-advanced?}
                                    :effect (effect (add-prop target :advance-counter c {:placed true}))}
                                   card nil)))}"
-04079,Punitive Counterstrike,"{:trace {:base 5 :msg ""do meat damage equal to agenda points stolen last turn""
+04079,Punitive Counterstrike,"{:trace {:base 5 :msg ""do meat damage equal to the number of agenda points stolen last turn""
          :effect (effect (damage eid :meat (or (get-in runner [:register :stole-agenda]) 0) {:card card})
                          (system-msg (str ""does "" (or (:stole-agenda runner-reg) 0) "" meat damage"")))}}"
-04111,Reclamation Order,"{:prompt ""Choose a card from Archives"" :msg (msg ""add copies of "" (:title target) "" to HQ"")
+04111,Reclamation Order,"{:prompt ""Choose a card from Archives""
  :show-discard true
  :choices {:req #(and (= (:side %) ""Corp"")
                       (not= (:title %) ""Reclamation Order"")
                       (= (:zone %) [:discard]))}
- :effect (req (doseq [c (filter #(= (:title target) (:title %)) (:discard corp))]
-                (move state side c :hand))
-              (effect-completed state side eid card))}"
+ :msg (msg ""name "" (:title target))
+ :effect (req (let [title (:title target)
+                    cards (filter #(= title (:title %)) (:discard corp))
+                    n (count cards)]
+                (continue-ability state side
+                                  {:prompt (str ""Choose how many copies of ""
+                                                title "" to reveal"")
+                                   :choices {:number (req n)}
+                                   :msg (msg ""reveal "" target
+                                             "" cop"" (if (= 1 target) ""y"" ""ies"")
+                                             "" of "" title
+                                             "" from Archives""
+                                             (when (pos? target)
+                                               (str "" and add ""
+                                                    (if (= 1 target) ""it"" ""them"")
+                                                    "" to HQ"")))
+                                   :effect (req (doseq [c (->> cards
+                                                               (sort-by :seen)
+                                                               reverse
+                                                               (take target))]
+                                                  (move state side c :hand)))}
+                                  card nil)))}"
 08035,Recruiting Trip,"(let [rthelp (fn rt [total left selected]
                (if (pos? left)
                  {:prompt (str ""Select a sysop ("" (inc (- total left)) ""/"" total "")"")
@@ -613,6 +643,17 @@ id,name,code
          :msg ""give the Runner 1 tag""
          :label ""Give the Runner 1 tag""
          :effect (effect (tag-runner :runner 1))}}"
+11057,Service Outage,"(let [remove-effect (req (when (:so-run-activated card)
+                           (run-cost-bonus state side [:credit -1])
+                           (update! state side (dissoc card :so-run-activated))))
+      remove-ability {:req (req (:so-run-activated card))
+                      :effect remove-effect}]
+  {:events {:runner-turn-begins {:msg ""add an additional cost of 1 [Credit] to make the first run this turn""
+                                 :effect (effect (update! (assoc card :so-run-activated true))
+                                                 (run-cost-bonus [:credit 1]))}
+            :runner-turn-ends remove-ability
+            :run-ends remove-ability}
+   :leave-play remove-effect})"
 01100,Shipment from Kaguya,"{:choices {:max 2 :req can-be-advanced?}
  :msg (msg ""place 1 advancement token on "" (count targets) "" cards"")
  :effect (req (doseq [t targets] (add-prop state :corp t :advance-counter 1 {:placed true}))
@@ -679,11 +720,7 @@ id,name,code
  :effect (effect (gain :credit (* 3 (count (:scored runner)))))}"
 07025,Sub Boost,"{:choices {:req #(and (ice? %) (rezzed? %))}
  :msg (msg ""make "" (card-str state target) "" gain Barrier and \""[Subroutine] End the run\"""")
- :effect (effect (update! (assoc target :subtype
-                                        (->> (vec (.split (:subtype target) "" - ""))
-                                             (concat [""Barrier""])
-                                             distinct
-                                             (join "" - ""))))
+ :effect (effect (update! (assoc target :subtype (combine-subtypes true (:subtype target) ""Barrier"")))
                  (update-ice-strength target)
                  (host (get-card state target) (assoc card :zone [:discard] :seen true)))}"
 10113,Subcontract,"(letfn [(sc [i sccard]
@@ -797,6 +834,8 @@ id,name,code
                                                                        (card-str state fr) "" to "" (card-str state target))))}
                                     tol nil)))}
                   card nil)))}"
+11111,Violet Level Clearance,"{:msg ""gain 8 [Credits] and draw 4 cards""
+ :effect (effect (gain :credit 8) (draw 4))}"
 10106,Voter Intimidation,"{:req (req (seq (:scored runner)))
  :psi {:not-equal {:player :corp :prompt ""Choose a resource to trash""
                    :choices {:req #(and (installed? %)
