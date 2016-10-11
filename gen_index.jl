@@ -2,7 +2,7 @@
 
 "Generates the index.md file from the README.md file"
 function gen_index()
-  whole_file = open(readall, "README.md")
+  whole_file = open(readstring, "README.md")
 
   header = """
   ---

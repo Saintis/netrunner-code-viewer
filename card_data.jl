@@ -3,7 +3,7 @@
 import JSON
 
 "Escapes the string to adhere to csv format"
-function escape_str(str::AbstractString)
+function escape_str(str::String)
   # check if line contains chars that require quoting - else return normal string
   if !(in(',', str) || in('\n', str) || in('"', str))
     return str
@@ -14,10 +14,10 @@ function escape_str(str::AbstractString)
 end
 
 "Print the list of card data to a csv file. Also adds the code"
-function print_data(data::Vector{Tuple{UTF8String, UTF8String}}, card_set::ASCIIString)
-  card_id_dict = open(f -> JSON.parse(readall(f)), "card_id_dict.json")
+function print_data(data::Vector{Tuple{String, String}}, card_set::String)
+  card_id_dict = open(f -> JSON.parse(readstring(f)), "card_id_dict.json")
 
-  csv_data::Vector{Tuple{UTF8String, UTF8String, UTF8String}} =
+  csv_data::Vector{Tuple{String, String, String}} =
   map(data) do data_tuple
     name, card_code = data_tuple
     nrdb_id = card_id_dict[name]
@@ -47,7 +47,7 @@ Returns:
     and including final 'end'
   new brace count
 """
-function find_boundaries(string::AbstractString, count::Int64, opn='{', cls='}')
+function find_boundaries(string::String, count::Int64, opn='{', cls='}')
   index = 0
   for character in string
     # keep index behind checked char
@@ -69,13 +69,13 @@ function find_boundaries(string::AbstractString, count::Int64, opn='{', cls='}')
 end
 
 " Extracts the card and code pairs found for the specified card set "
-function extract_data(card_set::ASCIIString, clj_dir="clj/src/")
+function extract_data(card_set::String, clj_dir="clj/src/")
   print("Extracting $card_set ")
-  file_path = "$(clj_dir)cards-$card_set.clj"
+  file_path = "$(clj_dir)/cards/$card_set.clj"
   def_string = "(def cards-$card_set"
 
   # Create array to lock down type
-  data = Tuple{UTF8String, UTF8String}[]
+  data = Tuple{String, String}[]
 
   open(file_path) do input_file
     # look for the def that signifies the start of the card-code map
