@@ -33,12 +33,31 @@ id,name,code
           :unsuccessful-run {:effect (effect (trash card)
                                              (system-msg ""trashes Autoscripter""))}}}"
 04085,Blackguard,"{:in-play [:memory 2]
- :events {:expose {:msg (msg ""attempt to force the rez of "" (:title target))
-                   :effect (effect (rez :corp target))}}}"
+ :events {:expose
+          {:msg (msg ""attempt to force the rez of "" (:title target))
+           :delayed-completion true
+           :effect (req (let [c target
+                              cdef (card-def c)
+                              cname (:title c)]
+                          (if (:additional-cost cdef)
+                            (do (show-wait-prompt state :runner (str ""Corp to decide if they will rez "" cname))
+                                (continue-ability state side
+                                  {:optional
+                                   {:prompt (msg ""Pay additional cost to rez "" cname ""?"")
+                                    :player :corp
+                                    :yes-ability {:effect (effect (rez :corp c)
+                                                                  (clear-wait-prompt :runner))}
+                                    :no-ability {:effect (effect (system-msg :corp (str ""declines to pay additional costs""
+                                                                                    "" and is not forced to rez "" cname))
+                                                                 (clear-wait-prompt :runner))}}}
+                                 card nil))
+                            (do (rez state :corp target)
+                                (effect-completed state side eid)))))}}}"
 08106,Bookmark,"{:abilities [{:label ""Host up to 3 cards from your Grip facedown""
               :cost [:click 1] :msg ""host up to 3 cards from their Grip facedown""
-              :choices {:max 3 :req #(and (:side % ""Runner"")
-                                          (in-hand? %))}
+              :choices {:max 3
+                        :req #(and (= (:side %) ""Runner"")
+                                   (in-hand? %))}
               :effect (req (doseq [c targets]
                               (host state side (get-card state card) c {:facedown true})))}
              {:label ""Add all hosted cards to Grip"" :cost [:click 1] :msg ""add all hosted cards to their Grip""
@@ -131,7 +150,8 @@ id,name,code
 01005,Cyberfeeder,{:recurring 1}
 04086,CyberSolutions Mem Chip,{:in-play [:memory 2]}
 06098,Cybsoft MacroDrive,{:recurring 1}
-04042,Deep Red,"{:in-play [:memory 3]
+04042,Deep Red,"{:implementation ""MU use restriction not enforced""
+ :in-play [:memory 3]
  :events {:runner-install
           {:optional
            {:req (req (has-subtype? target ""Caïssa""))
@@ -207,7 +227,8 @@ id,name,code
           :run-ends {:effect (effect (update! (dissoc card :dorm-active)))}}}"
 04103,Dyson Fractal Generator,{:recurring 1}
 02028,Dyson Mem Chip,{:in-play [:memory 1 :link 1]}
-02024,e3 Feedback Implants,"{:abilities [{:cost [:credit 1] :msg ""break 1 additional subroutine""}]}"
+02024,e3 Feedback Implants,"{:implementation ""Usage restriction not enforced""
+ :abilities [{:cost [:credit 1] :msg ""break 1 additional subroutine""}]}"
 06093,Ekomind,"{:effect (req (swap! state assoc-in [:runner :memory] (count (get-in @state [:runner :hand])))
               (add-watch state :ekomind (fn [k ref old new]
                                           (let [hand-size (count (get-in new [:runner :hand]))]
@@ -313,7 +334,8 @@ id,name,code
                                               (when-let [run (:run @state)]
                                                 (when (and (:ended run) (empty? (get-in @state [:runner :prompt])))
                                                   (handle-end-run state :runner))))} card nil))}]}"
-07046,MemStrips,{:in-play [:memory 3]}
+07046,MemStrips,"{:implementation ""MU usage restriction not enforced""
+ :in-play [:memory 3]}"
 11005,Mirror,"{:in-play [:memory 2]
  :events {:successful-run
           {:delayed-completion true
@@ -416,13 +438,20 @@ id,name,code
                                    (in-hand? %))}
               :msg (msg ""host "" (:title target))
               :effect (effect (gain :memory (:memoryunits target))
-                              (runner-install target {:host-card card}))}
+                              (runner-install target {:host-card card})
+                              (update! (assoc (get-card state card) :Omnidrive-prog (:cid target))))}
              {:label ""Host an installed program of 1[Memory Unit] or less on Omni-drive""
               :prompt ""Choose an installed program of 1[Memory Unit] or less to host on Omni-drive""
               :choices {:req #(and (is-type? % ""Program"")
+                                   (<= (:memoryunits %) 1)
                                    (installed? %))}
               :msg (msg ""host "" (:title target))
-              :effect (effect (host card target))}]}"
+              :effect (effect (host card target)
+                              (gain :memory (:memoryunits target))
+                              (update! (assoc (get-card state card) :Omnidrive-prog (:cid target))))}]
+:events {:card-moved {:req (req (= (:cid target) (:Omnidrive-prog (get-card state card))))
+                       :effect (effect (update! (dissoc card :Omnidrive-prog))
+                                       (lose :memory (:memoryunits target)))}}}"
 02009,Plascrete Carapace,"{:data [:counter {:power 4}]
  :prevent {:damage [:meat]}
  :abilities [{:counter-cost [:power 1]
@@ -551,6 +580,18 @@ id,name,code
               :msg ""trash it and look at the top card of R&D""
               :effect (effect (prompt! card (str ""The top card of R&D is "" (:title (first (:deck corp)))) [""OK""] {})
                               (trash card {:cause :ability-cost}))}]}"
+11063,The Gauntlet,"{:in-play [:memory 2]
+ :events {:pre-access {:req (req (= :hq target))
+                       :silent (req true)
+                       :delayed-completion true
+                       :effect (effect (continue-ability
+                                         {:prompt ""How many ICE protecting HQ did you break all subroutines on?""
+                                          ; HACK ALERT - :number needs an upper limit. we don't track ""broke all subroutines""
+                                          ; events, so we can't put an accurate upper limit here. The higher the upper limit,
+                                          ; the more entries in the UI drop-down list. 10 seems OK.
+                                          :choices {:number (req 10)}
+                                          :effect (effect (access-bonus target))}
+                                         card nil))}}}"
 01040,The Personal Touch,"{:hosting {:req #(and (has-subtype? % ""Icebreaker"")
                       (installed? %))}
  :effect (effect (update-breaker-strength (:host card)))
@@ -590,6 +631,18 @@ id,name,code
                  (system-msg (str ""suffers 2 meat damage from installing Titanium Ribs""))
                  (damage eid :meat 2 {:card card}))
  :leave-play (req (swap! state update-in [:damage] dissoc :damage-choose-runner))}"
+11067,Top Hat,"(letfn [(ability [n]
+          {:delayed-completion true
+           :mandatory true
+           :prompt ""Which card from the top of R&D would you like to access? (Card 1 is on top.)""
+           :choices (take n [""1"" ""2"" ""3"" ""4"" ""5""])
+           :effect (effect (handle-access eid [(nth (:deck corp) (dec (Integer/parseInt target)))]))})]
+  {:events {:successful-run
+            {:req (req (= target :rd))
+             :interactive (req true)
+             :optional {:prompt ""Use Top Hat to choose one of the top 5 cards in R&D to access?""
+                        :yes-ability {:effect (req (swap! state assoc-in [:run :run-effect :replace-access]
+                                                          (ability (count (:deck corp)))))}}}}})"
 08043,Turntable,"{:in-play [:memory 1]
  :events {:agenda-stolen
           {:interactive (req true)

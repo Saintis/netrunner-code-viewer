@@ -11,7 +11,7 @@ id,name,code
 01055,Accelerated Beta Test,"(letfn [(abt [n i]
           {:req (req (pos? i))
            :prompt ""Select a piece of ICE from the Temporary Zone to install""
-           :choices {:req #(and (:side % ""Corp"")
+           :choices {:req #(and (= (:side %) ""Corp"")
                                 (ice? %)
                                 (= (:zone %) [:play-area]))}
            :effect (req (corp-install state side target nil
@@ -170,7 +170,7 @@ id,name,code
   {:optional {:prompt ""Create a new remote server?""
               :yes-ability {:prompt ""Select a card to install""
                             :show-discard true
-                            :choices {:req #(and (:side % ""Corp"")
+                            :choices {:req #(and (= (:side %) ""Corp"")
                                                  (not (is-type? % ""Operation""))
                                                  (#{[:hand] [:discard]} (:zone %)))}
                             :effect (req (corp-install state side target ""New remote""
@@ -455,10 +455,11 @@ id,name,code
               :choices (req (:discard corp)) :effect (effect (move target :hand))}]}"
 03006,Project Wotan,"{:silent (req true)
  :effect (effect (add-counter card :agenda 3))
- :abilities [{:req (req (and (ice? current-ice) (rezzed? current-ice)
+ :abilities [{:req (req (and (ice? current-ice)
+                             (rezzed? current-ice)
                              (has-subtype? current-ice ""Bioroid"")))
               :counter-cost [:agenda 1]
-              :msg ""add an 'End the run' subroutine to the approached ICE""}]}"
+              :msg ""make the approached piece of bioroid ICE gain \""[Subroutine] End the run\"" after all its other subroutines for the remainder of the run""}]}"
 10090,Puppet Master,"{:events {:successful-run
           {:interactive (req true)
            :delayed-completion true
@@ -555,7 +556,8 @@ id,name,code
                               "" of the Runner's Stack"")
                     :effect (effect (mill :runner
                                           (if (>= (:advance-counter (get-card state card)) 4) 2 1)))}}}"
-04053,Unorthodox Predictions,"{:delayed-completion false
+04053,Unorthodox Predictions,"{:implementation ""Prevention of subroutine breaking is not enforced""
+ :delayed-completion false
  :prompt ""Choose an ICE type for Unorthodox Predictions"" :choices [""Sentry"", ""Code Gate"", ""Barrier""]
  :msg (msg ""prevent subroutines on "" target "" ICE from being broken until next turn."")}"
 06110,Utopia Fragment,"{:events {:pre-steal-cost {:req (req (pos? (or (:advance-counter target) 0)))

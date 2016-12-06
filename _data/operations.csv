@@ -101,7 +101,8 @@ id,name,code
  :effect (final-effect (gain :credit (* 3 (get target :advance-counter 0))) (trash target))
  :msg (msg ""trash "" (card-str state target) "" and gain ""
            (* 3 (get target :advance-counter 0)) "" [Credits]"")}"
-06012,Bad Times,"{:req (req tagged)
+06012,Bad Times,"{:implementation ""Any required program trashing is manual""
+ :req (req tagged)
  :msg ""force the Runner to lose 2[mu] until the end of the turn""
  :effect (req (lose state :runner :memory 2)
               (when (< (:memory runner) 0)
@@ -110,10 +111,21 @@ id,name,code
                          (system-msg state :runner ""regains 2[mu]""))}}"
 01098,Beanstalk Royalties,"{:msg ""gain 3 [Credits]""
  :effect (effect (gain :credit 3))}"
+11079,Best Defense,"{:delayed-completion true
+ :req (req (not-empty (all-installed state :runner)))
+ :effect (req (let [t (:tag runner)]
+                (continue-ability state side
+                  {:prompt (msg ""Choose a Runner card with an install cost of "" t "" or less to trash"")
+                   :choices {:req #(and (installed? %)
+                                        (<= (:cost %) t))}
+                   :msg (msg ""trash "" (:title target))
+                   :effect (effect (trash target))}
+                 card nil)))}"
 02035,Big Brother,"{:req (req tagged)
  :msg ""give the Runner 2 tags""
  :effect (effect (tag-runner :runner 2))}"
-03013,Bioroid Efficiency Research,"{:choices {:req #(and (ice? %)
+03013,Bioroid Efficiency Research,"{:implementation ""Derez is manual""
+ :choices {:req #(and (ice? %)
                       (has-subtype? % ""Bioroid"")
                       (not (rezzed? %)))}
  :msg (msg ""rez "" (card-str state target {:visible true}) "" at no cost"")
@@ -146,8 +158,9 @@ id,name,code
                   card nil)))
  :events {:access {:req (req (= (:cid target) (:cid (:host card))))
                    :effect (effect (tag-runner :runner 2)) :msg ""give the Runner 2 tags""}}}"
-04012,Celebrity Gift,"{:choices {:max 5 :req #(and (:side % ""Corp"")
-                             (in-hand? %))}
+04012,Celebrity Gift,"{:choices {:max 5
+           :req #(and (= (:side %) ""Corp"")
+                      (in-hand? %))}
  :msg (msg ""reveal "" (join "", "" (map :title targets)) "" and gain "" (* 2 (count targets)) "" [Credits]"")
  :effect (final-effect (gain :credit (* 2 (count targets))))}"
 05013,Cerebral Cast,"{:req (req (:successful-run runner-reg))
@@ -225,6 +238,26 @@ id,name,code
                            :msg (msg ""trash "" (:title target))
                            :effect (effect (trash target))}
                          card nil)))}}"
+06022,Enhanced Login Protocol,"(letfn [(add-effect [state side card]
+          (update! state side (assoc card :elp-activated true))
+          (click-run-cost-bonus state side [:click 1]))
+        (remove-effect [state side card]
+          (click-run-cost-bonus state side [:click -1])
+          (update! state side (dissoc card :elp-activated)))]
+  {:effect (req (when (and (= :runner (:active-player @state))
+                           (not (:made-click-run runner-reg)))
+                  (add-effect state side card)
+                  (system-msg state side (str ""uses Enhanced Login Protocol to add an additional cost of [Click]""
+                                              "" to make the first run not through a card ability this turn""))))
+   :events {:runner-turn-begins {:msg ""add an additional cost of [Click] to make the first run not through a card ability this turn""
+                                 :effect (effect (add-effect card))}
+            :runner-turn-ends {:req (req (:elp-activated card))
+                               :effect (effect (remove-effect card))}
+            :run-ends {:req (req (and (:elp-activated card)
+                                      (:made-click-run runner-reg)))
+                       :effect (effect (remove-effect card))}}
+   :leave-play (req (when (:elp-activated card)
+                      (remove-effect state side card)))})"
 10092,Exchange of Information,"{:req (req (and tagged
                 (seq (:scored runner))
                 (seq (:scored corp))))
@@ -301,6 +334,32 @@ id,name,code
          :msg ""give the Runner 4 tags""
          :label ""Give the Runner 4 tags""
          :effect (effect (tag-runner :runner 4))}}"
+11074,Hasty Relocation,"(letfn [(hr-final [chosen original]
+          {:prompt (str ""The top cards of R&D will be "" (clojure.string/join  "", "" (map :title chosen)) ""."")
+           :choices [""Done"" ""Start over""]
+           :delayed-completion true
+           :effect (req (if (= target ""Done"")
+                          (do (doseq [c (reverse chosen)] (move state :corp c :deck {:front true}))
+                              (clear-wait-prompt state :runner)
+                              (effect-completed state side eid card))
+                          (continue-ability state side (hr-choice original '() 3 original)
+                                            card nil)))})
+        (hr-choice [remaining chosen n original]
+          {:prompt ""Choose a card to move next onto R&D""
+           :choices remaining
+           :delayed-completion true
+           :effect (req (let [chosen (cons target chosen)]
+                          (if (< (count chosen) n)
+                            (continue-ability state side (hr-choice (remove-once #(not= target %) remaining)
+                                                                     chosen n original) card nil)
+                            (continue-ability state side (hr-final chosen original) card nil))))})]
+  {:delayed-completion true
+   :msg ""trash the top card of R&D, draw 3 cards, and add 3 cards in HQ to the top of R&D""
+   :effect (req (mill state :corp)
+                (draw state side 3)
+                (show-wait-prompt state :runner ""Corp to add 3 cards in HQ to the top of R&D"")
+                (let [from (get-in @state [:corp :hand])]
+                  (continue-ability state :corp (hr-choice from '() 3 from) card nil)))})"
 11034,Hatchet Job,"{:trace {:base 5
          :choices {:req #(and (installed? %)
                               (card-is? % :side :runner)
@@ -315,6 +374,18 @@ id,name,code
          :msg ""add a Resource to the top of the Stack""
          :effect (effect (move :runner target :deck {:front true})
                          (system-msg (str ""adds "" (:title target) "" to the top of the Stack"")))
+         :unsuccessful {:msg ""take 1 bad publicity""
+                        :effect (effect (gain :corp :bad-publicity 1))}}}"
+11051,Hellion Beta Test,"{:req (req (:trashed-card runner-reg))
+ :trace {:base 2
+         :label ""Trash 2 installed non-program cards""
+         :choices {:max 2
+                   :req #(and (installed? %)
+                              (= (:side %) ""Runner"")
+                              (not (is-type? % ""Program"")))}
+         :msg (msg ""trash "" (join "", "" (map :title targets)))
+         :effect (req (doseq [c targets]
+                        (trash state side c)))
          :unsuccessful {:msg ""take 1 bad publicity""
                         :effect (effect (gain :corp :bad-publicity 1))}}}"
 10013,Heritage Committee,"{:delayed-completion true
@@ -370,8 +441,8 @@ id,name,code
                  (continue-ability {:player :corp
                                     :prompt ""Choose a card to install""
                                     :delayed-completion true
-                                    :choices {:req #(and (not (is-type? % ""Operation""))
-                                                         (:side % ""Corp"")
+                                    :choices {:req #(and (= (:side %) ""Corp"")
+                                                         (not (is-type? % ""Operation""))
                                                          (in-hand? %))}
                                     :effect (effect (corp-install eid target nil nil))
                                     :msg (msg (corp-install-msg target))}
@@ -469,7 +540,8 @@ id,name,code
                     :effect (effect (lose :runner :tag 1)
                                     (trash target))}
                   card nil))}"
-02079,Oversight AI,"{:choices {:req #(and (ice? %) (not (rezzed? %)) (= (last (:zone %)) :ices))}
+02079,Oversight AI,"{:implementation ""Trashing ICE is manual""
+ :choices {:req #(and (ice? %) (not (rezzed? %)) (= (last (:zone %)) :ices))}
  :msg (msg ""rez "" (:title target) "" at no cost"")
  :effect (final-effect (rez target {:ignore-cost :all-costs})
                        (host (get-card state target) (assoc card :zone [:discard] :seen true)))}"
@@ -611,8 +683,9 @@ id,name,code
  :effect (req (let [n (count (:hand corp))]
                 (continue-ability state side
                   {:prompt (msg ""Choose up to "" n "" cards in HQ to trash with Reuse"")
-                   :choices {:max n :req #(and (:side % ""Corp"")
-                                               (in-hand? %))}
+                   :choices {:max n
+                             :req #(and (= (:side %) ""Corp"")
+                                        (in-hand? %))}
                    :msg (msg ""trash "" (count targets) "" card"" (if (not= 1 (count targets)) ""s"")
                              "" and gain "" (* 2 (count targets)) "" [Credits]"")
                    :effect (effect (trash-cards targets)
@@ -632,7 +705,8 @@ id,name,code
               (doseq [c (filter #(= target (:title %)) (:hand runner))]
                 (trash state side c {:unpreventable true})))}"
 11060,Scarcity of Resources,"{:msg ""increase the install cost of resources by 2""
- :events {:pre-install {:req (req (is-type? target ""Resource""))
+ :events {:pre-install {:req (req (and (is-type? target ""Resource"")
+                                       (not (second targets)))) ; not facedown
                         :effect (effect (install-cost-bonus [:credit 2]))}}}"
 01099,Scorched Earth,"{:req (req tagged)
  :delayed-completion true
@@ -643,17 +717,26 @@ id,name,code
          :msg ""give the Runner 1 tag""
          :label ""Give the Runner 1 tag""
          :effect (effect (tag-runner :runner 1))}}"
-11057,Service Outage,"(let [remove-effect (req (when (:so-run-activated card)
-                           (run-cost-bonus state side [:credit -1])
-                           (update! state side (dissoc card :so-run-activated))))
-      remove-ability {:req (req (:so-run-activated card))
-                      :effect remove-effect}]
-  {:events {:runner-turn-begins {:msg ""add an additional cost of 1 [Credit] to make the first run this turn""
-                                 :effect (effect (update! (assoc card :so-run-activated true))
-                                                 (run-cost-bonus [:credit 1]))}
+11057,Service Outage,"(let [add-effect (fn [state side card]
+                   (update! state side (assoc card :so-activated true))
+                   (run-cost-bonus state side [:credit 1]))
+      remove-effect (fn [state side card]
+                      (run-cost-bonus state side [:credit -1])
+                      (update! state side (dissoc card :so-activated)))
+      remove-ability {:req (req (:so-activated card))
+                      :effect (effect (remove-effect card))}]
+  {:msg (msg (when (and (= :runner (:active-player @state))
+                        (empty? (:made-run runner-reg)))
+          ""add an additional cost of 1 [Credit] to make the first run this turn""))
+   :effect (req (when (and (= :runner (:active-player @state))
+                           (empty? (:made-run runner-reg)))
+                  (add-effect state side card)))
+   :events {:runner-turn-begins {:msg ""add an additional cost of 1 [Credit] to make the first run this turn""
+                                 :effect (effect (add-effect card))}
             :runner-turn-ends remove-ability
             :run-ends remove-ability}
-   :leave-play remove-effect})"
+   :leave-play (req (when (:so-activated card)
+                      (remove-effect state side card)))})"
 01100,Shipment from Kaguya,"{:choices {:max 2 :req can-be-advanced?}
  :msg (msg ""place 1 advancement token on "" (count targets) "" cards"")
  :effect (req (doseq [t targets] (add-prop state :corp t :advance-counter 1 {:placed true}))
@@ -661,7 +744,7 @@ id,name,code
 01060,Shipment from MirrorMorph,"(let [shelper (fn sh [n] {:prompt ""Select a card to install with Shipment from MirrorMorph""
                           :priority -1
                           :delayed-completion true
-                          :choices {:req #(and (:side % ""Corp"")
+                          :choices {:req #(and (= (:side %) ""Corp"")
                                                (not (is-type? % ""Operation""))
                                                (in-hand? %))}
                           :effect (req (when-completed
@@ -708,8 +791,9 @@ id,name,code
                                              card nil))}
                           card nil)))}}"
 11035,Special Report,"{:prompt ""Choose any number of cards in HQ to shuffle into R&D""
- :choices {:max (req (count (:hand corp))) :req #(and (:side % ""Corp"")
-                                                      (in-hand? %))}
+ :choices {:max (req (count (:hand corp)))
+           :req #(and (= (:side %) ""Corp"")
+                      (in-hand? %))}
  :msg (msg ""shuffle "" (count targets) "" cards in HQ into R&D and draw "" (count targets) "" cards"")
  :effect (req (doseq [c targets]
                 (move state side c :deck))
@@ -834,6 +918,13 @@ id,name,code
                                                                        (card-str state fr) "" to "" (card-str state target))))}
                                     tol nil)))}
                   card nil)))}"
+11071,Wetwork Refit,"{:choices {:req #(and (ice? %)
+                      (has-subtype? % ""Bioroid"")
+                      (rezzed? %))}
+ :msg (msg ""give "" (card-str state target) ""\""[Subroutine] Do 1 brain damage\"" before all its other subroutines"")
+ :effect (effect (update! (assoc target :subroutines (cons (do-brain-damage 1) (:subroutines target))))
+                 (host (get-card state target) (assoc card :zone [:discard] :seen true)))
+ :leave-play (effect (update! (assoc (:host card) :subroutines (rest (:subroutines (:host card))))))}"
 11111,Violet Level Clearance,"{:msg ""gain 8 [Credits] and draw 4 cards""
  :effect (effect (gain :credit 8) (draw 4))}"
 10106,Voter Intimidation,"{:req (req (seq (:scored runner)))

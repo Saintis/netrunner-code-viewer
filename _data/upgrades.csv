@@ -107,7 +107,8 @@ id,name,code
 10034,Disposable HQ,"(letfn [(dhq [n i]
           {:req (req (pos? i))
            :prompt ""Choose a card in HQ to add to the bottom of R&D""
-           :choices {:req #(and (:side % ""Corp"") (in-hand? %))}
+           :choices {:req #(and (= (:side %) ""Corp"")
+                                (in-hand? %))}
            :msg ""add a card to the bottom of R&D""
            :effect (req (move state side target :deck)
                         (when (< n i)
@@ -121,6 +122,11 @@ id,name,code
                                              :effect (effect (resolve-ability (dhq 1 n) card nil))}
                                :end-effect (effect (clear-wait-prompt :runner))}}
                             card nil)))}})"
+11076,Drone Screen,"{:events {:run {:req (req (and this-server tagged))
+                :delayed-completion true
+                :trace {:base 3
+                        :msg ""do 1 meat damage""
+                        :effect (effect (damage eid :meat 1 {:card card :unpreventable true}))}}}}"
 01066,Experiential Data,"{:effect (req (update-ice-in-server state side (card->server state card)))
  :events {:pre-ice-strength {:req (req (= (card->server state card) (card->server state target)))
                              :effect (effect (ice-strength-bonus 1 target))}}
@@ -216,7 +222,8 @@ id,name,code
                                                 (update-ice-strength state side snew)))} card nil)
                               (system-msg state side (str ""uses Mumbad City Grid to swap "" (card-str state passed-ice)
                                                           "" with "" (card-str state target)))))}]}"
-10076,Mumbad Virtual Tour,"{:access {:req (req installed)
+10076,Mumbad Virtual Tour,"{:implementation ""Only forces trash if runner has no Imps and enough credits in the credit pool""
+ :access {:req (req installed)
           :effect (req (let [trash-cost (trash-cost state side card)
                              slow-trash (any-flag-fn? state :runner :slow-trash true)]
                          (if (and (can-pay? state :runner nil :credit trash-cost)
@@ -226,7 +233,7 @@ id,name,code
                            (toast state :runner
                                   (str ""You must trash Mumbad Virtual Tour, if able, using any available means ""
                                        ""(Whizzard, Imp, Ghost Runner, Net Celebrity...)"")))))}
- :trash-effect {:when-unrezzed true
+ :trash-effect {:when-inactive true
                 :effect (req (swap! state assoc-in [:runner :register :force-trash] false))}}"
 05021,NeoTokyo Grid,"(let [ng {:req (req (and (= (second (:zone target)) (second (:zone card)))
                          (#{:content} (last (:zone target)))
@@ -237,7 +244,8 @@ id,name,code
                                         (or (= (:zone card) (:zone target))
                                             (= (:zone card) (:zone (get-card state (:host target)))))))
                       :effect (effect (trash-cost-bonus 3))}}}"
-04038,Off the Grid,"{:effect (req (prevent-run-on-server state card (second (:zone card))))
+04038,Off the Grid,"{:implementation ""Installation restriction not enforced""
+ :effect (req (prevent-run-on-server state card (second (:zone card))))
  :events {:runner-turn-begins {:effect (req (prevent-run-on-server state card (second (:zone card))))}
           :successful-run {:req (req (= target :hq))
                            :effect (req (trash state :corp card)
@@ -412,10 +420,12 @@ id,name,code
                              (has-subtype? current-ice ""Bioroid"")))
               :effect (effect (trash card))
               :msg (msg ""prevent a subroutine on "" (:title current-ice) "" from being broken"")}]}"
-08080,Underway Grid,"{:events {:pre-expose {:req (req (= (take 2 (:zone target)) (take 2 (:zone card))))
+08080,Underway Grid,"{:implementation ""Bypass prevention is not implemented""
+ :events {:pre-expose {:req (req (= (take 2 (:zone target)) (take 2 (:zone card))))
                        :msg ""prevent 1 card from being exposed""
                        :effect (effect (expose-prevent 1))}}}"
-08015,Valley Grid,"{:abilities [{:req (req this-server)
+08015,Valley Grid,"{:implementation ""Activation is manual""
+ :abilities [{:req (req this-server)
               :label ""Reduce Runner's maximum hand size by 1 until start of next Corp turn""
               :msg ""reduce the Runner's maximum hand size by 1 until the start of the next Corp turn""
               :effect (req (update! state side (assoc card :times-used (inc (get card :times-used 0))))

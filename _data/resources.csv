@@ -39,7 +39,8 @@ id,name,code
  :events {:runner-turn-begins {:req (req (>= (get-in card [:counter :credit] 0) 6))
                                :effect (effect (add-counter card :credit 2)
                                                (system-msg (str ""adds 2 [Credit] to Algo Trading"")))}}}"
-09041,Always Be Running,"{:abilities [{:once :per-turn
+09041,Always Be Running,"{:implementation ""Run requirement not enforced""
+ :abilities [{:once :per-turn
               :cost [:click 2]
               :msg (msg ""break 1 subroutine"")}]}"
 02067,All-nighter,"{:abilities [{:cost [:click 1] :effect (effect (trash card {:cause :ability-cost}) (gain :click 2))
@@ -148,8 +149,9 @@ id,name,code
               :msg ""draw 3 cards and shuffle 1 card from their Grip back into their Stack""
               :effect (effect (draw 3)
                               (resolve-ability
-                                {:prompt ""Choose a card to shuffle back into your Stack""
-                                 :choices (req (:hand runner))
+                                {:prompt ""Choose a card in your Grip to shuffle back into your Stack""
+                                 :choices {:req #(and (in-hand? %)
+                                                      (= (:side %) ""Runner""))}
                                  :effect (effect (move target :deck)
                                                  (shuffle! :deck))}
                                card nil))}]}"
@@ -187,7 +189,8 @@ id,name,code
  :events {:rez {:req (req (ice? target))
                 :msg ""gain 1 [Credits]""
                 :effect (effect (gain :runner :credit 1))}}}"
-10047,Councilman,"{:events {:rez {:req (req (and (#{""Asset"" ""Upgrade""} (:type target))
+10047,Councilman,"{:implementation ""Does not restrict Runner to Asset / Upgrade just rezzed""
+ :events {:rez {:req (req (and (#{""Asset"" ""Upgrade""} (:type target))
                                (can-pay? state :runner nil [:credit (rez-cost state :corp target)])))
                 :effect (req (toast state :runner (str ""Click Councilman to derez "" (card-str state target {:visible true})
                                                        "" that was just rezzed"") ""info"")
@@ -301,9 +304,9 @@ id,name,code
  :install-cost-bonus (req (if (and run (= (:server run) [:rd]) (zero? (:position run)))
                             [:credit -7 :click -1] nil))
  :effect (req (when (and run (= (:server run) [:rd]) (zero? (:position run)))
-                (register-successful-run state side (:server run))
-                (swap! state update-in [:runner :prompt] rest)
-                (handle-end-run state side)))}"
+                (when-completed (register-successful-run state side (:server run))
+                                (do (swap! state update-in [:runner :prompt] rest)
+                                    (handle-end-run state side)))))}"
 10078,Emptied Mind,"(let [ability {:req (req (= 0 (count (:hand runner))))
                :msg ""gain [Click]""
                :label ""Gain [Click] (start of turn)""
@@ -315,9 +318,10 @@ id,name,code
                            :msg (msg ""force the Corp to reveal "" (:title (first (shuffle (:hand corp)))))
                            :req (req (genetics-trigger? state side :successful-run))}}}"
 04106,Fall Guy,"{:prevent {:trash [:resource]}
- :abilities [{:label ""Prevent a resource from being trashed""
+ :abilities [{:label ""[Trash]: Prevent another installed resource from being trashed""
               :effect (effect (trash-prevent :resource 1) (trash card {:unpreventable true :cause :ability-cost}))}
-             {:effect (effect (trash card {:cause :ability-cost}) (gain :credit 2)) :msg ""gain 2 [Credits]""}]}"
+             {:label ""[Trash]: Gain 2 [Credits]""
+              :effect (effect (trash card {:cause :ability-cost}) (gain :credit 2)) :msg ""gain 2 [Credits]""}]}"
 08085,Fan Site,"{:events {:agenda-scored {:msg ""add it to their score area as an agenda worth 0 agenda points""
                           :req (req (installed? card))
                           :effect (effect (as-agenda :runner card 0))}}}"
@@ -342,11 +346,13 @@ id,name,code
                                "" agenda point"" (when (> (get-agenda-points state :runner c) 1) ""s""))))}]}"
 11047,Find the Truth,"{:events {:post-runner-draw {:msg (msg ""reveal that they drew: ""
                                        (join "", "" (map :title (get-in @state [:runner :register :most-recent-drawn]))))}
-          :successful-run {:optional
+          :successful-run {:interactive (req true)
+                           :optional
                            {:delayed-completion true
                             :req (req (first-event state side :successful-run))
                             :prompt ""Use Find the Truth to look at the top card of R&D?""
-                            :yes-ability {:effect (req (prompt! state :runner card (str ""The top card of R&D is ""
+                            :yes-ability {:msg ""look at the top card of R&D""
+                                          :effect (req (prompt! state :runner card (str ""The top card of R&D is ""
                                                                                         (:title (first (:deck corp)))) [""OK""] {})
                                                        (effect-completed state side eid))}
                             :no-ability {:effect (req (effect-completed state side eid))}}}}}"
@@ -354,12 +360,24 @@ id,name,code
               :req (req (not-empty (turn-events state side :damage)))
               :msg ""draw 1 card""
               :effect (effect (draw))}]}"
-08067,Gang Sign,"{:events {:agenda-scored {:delayed-completion true
-                          :interactive (req true)
-                          :msg (msg ""access "" (get-in @state [:runner :hq-access]) "" card""
-                                    (when (< 1 (get-in @state [:runner :hq-access])) ""s"") "" from HQ"")
-                          :effect (req (let [c (take (get-in @state [:runner :hq-access]) (shuffle (:hand corp)))]
-                                         (continue-ability state :runner (choose-access c '(:hq)) card nil)))}}}"
+08067,Gang Sign,"{:events {:agenda-scored
+          {:delayed-completion true
+           :interactive (req true)
+           :msg (msg ""access "" (get-in @state [:runner :hq-access]) "" card""
+                     (when (< 1 (get-in @state [:runner :hq-access])) ""s"") "" from HQ"")
+           :effect (req (when-completed
+                          ; manually trigger the pre-access event to alert Nerve Agent.
+                          (trigger-event-sync state side :pre-access :hq)
+                          (let [from-hq (access-count state side :hq-access)]
+                            (continue-ability
+                              state :runner
+                              (access-helper-hq
+                                state from-hq
+                                ; access-helper-hq uses a set to keep track of which cards have already
+                                ; been accessed. by adding HQ root's contents to this set, we make the runner
+                                ; unable to access those cards, as Gang Sign intends.
+                                (set (get-in @state [:corp :servers :hq :content])))
+                              card nil))))}}}"
 08006,Gene Conditioning Shoppe,"{:msg ""make Genetics trigger a second time each turn""
  :effect (effect (register-persistent-flag! card :genetics-trigger-twice (constantly true)))
  :leave-play (effect (clear-persistent-flag! card :genetics-trigger-twice))}"
@@ -404,13 +422,14 @@ id,name,code
 06059,Hades Shard,"{:abilities [{:msg ""access all cards in Archives""
               :effect (req (trash state side card {:cause :ability-cost})
                            (swap! state update-in [:corp :discard] #(map (fn [c] (assoc c :seen true)) %))
+                           (swap! state update-in [:run :cards-accessed] (fnil #(+ % (count (:discard corp))) 0))
                            (resolve-ability state :runner (choose-access (get-in @state [:corp :discard]) '(:archives)) card nil))}]
  :install-cost-bonus (req (if (and run (= (:server run) [:archives]) (= 0 (:position run)))
                             [:credit -7 :click -1] nil))
  :effect (req (when (and run (= (:server run) [:archives]) (= 0 (:position run)))
-                (register-successful-run state side (:server run))
-                (swap! state update-in [:runner :prompt] rest)
-                (handle-end-run state side)))}"
+                (when-completed (register-successful-run state side (:server run))
+                                (do (swap! state update-in [:runner :prompt] rest)
+                                    (handle-end-run state side)))))}"
 04023,Hard at Work,"(let [ability {:msg ""gain 2 [Credits] and lose [Click]""
                :once :per-turn
                :effect (effect (lose :click 1) (gain :credit 2))}]
@@ -429,7 +448,8 @@ id,name,code
                :effect (req (trash state side card {:cause :ability-cost})
                             (doseq [c (take 3 (:deck runner))]
                                (runner-install state side c {:facedown true})))}]}"
-03051,Ice Analyzer,"{:events {:rez {:req (req (ice? target))
+03051,Ice Analyzer,"{:implementation ""Credit use restriction is not enforced""
+ :events {:rez {:req (req (ice? target))
                 :msg ""place 1 [Credits] on Ice Analyzer""
                 :effect (effect (add-counter :runner card :credit 1))}}
  :abilities [{:counter-cost [:credit 1]
@@ -449,7 +469,8 @@ id,name,code
                :msg (msg ""make a run on "" target "" during which no programs can be used"")
                :makes-run true
                :effect (effect (run target))}]
-{:flags {:runner-phase-12 (req true)}
+{:implementation ""Doesn't prevent program use""
+ :flags {:runner-phase-12 (req true)}
  :install-cost-bonus (req [:credit (* -1 (:link runner))])
  :events {:runner-turn-begins
            {:optional {:req (req (not (get-in @state [:per-turn (:cid card)])))
@@ -754,12 +775,17 @@ id,name,code
 04049,Raymond Flint,"{:effect (req (add-watch state :raymond-flint
                          (fn [k ref old new]
                            (when (< (get-in old [:corp :bad-publicity]) (get-in new [:corp :bad-publicity]))
-                             (resolve-ability
-                              ref side
-                              {:msg (msg ""access "" (get-in @state [:runner :hq-access]) "" card from HQ"")
-                               :effect (req (let [c (take (get-in @state [:runner :hq-access]) (shuffle (:hand corp)))]
-                                              (resolve-ability state :runner (choose-access c '(:hq)) card nil)))}
-                              card nil)))))
+                             (when-completed
+                               ; manually trigger the pre-access event to alert Nerve Agent.
+                               (trigger-event-sync ref side :pre-access :hq)
+                               (let [from-hq (access-count state side :hq-access)]
+                                 (resolve-ability
+                                   ref side
+                                   (access-helper-hq
+                                     state from-hq
+                                     ; see note in Gang Sign
+                                     (set (get-in @state [:corp :servers :hq :content])))
+                                   card nil)))))))
  :leave-play (req (remove-watch state :raymond-flint))
  :abilities [{:msg ""expose 1 card""
               :choices {:req installed?}
@@ -774,7 +800,7 @@ id,name,code
                                                                (count from) from) card nil)
                   (do (clear-wait-prompt state :corp)
                       (effect-completed state side eid card)))))
- :leave-play (effect (mill :runner 3))}"
+ :trash-effect {:effect (effect (mill :runner 3))}}"
 07050,Sacrificial Clone,"{:prevent {:damage [:meat :net :brain]}
  :abilities [{:effect (req (doseq [c (concat (get-in runner [:rig :hardware])
                                              (filter #(not (has-subtype? % ""Virtual""))
@@ -1043,7 +1069,7 @@ id,name,code
                   (swap! state assoc-in [:runner :hand-size-base] 5))}"
 05050,Tri-maf Contact,"{:abilities [{:cost [:click 1] :msg ""gain 2 [Credits]"" :once :per-turn
               :effect (effect (gain :credit 2))}]
- :leave-play (effect (damage eid :meat 3 {:unboostable true :card card}))}"
+ :trash-effect {:effect (effect (damage eid :meat 3 {:unboostable true :card card}))}}"
 08030,Tyson Observatory,"{:abilities [{:prompt ""Choose a piece of Hardware"" :msg (msg ""add "" (:title target) "" to their Grip"")
               :choices (req (cancellable (filter #(is-type? % ""Hardware"") (:deck runner)) :sorted))
               :cost [:click 2]
@@ -1064,9 +1090,9 @@ id,name,code
  :install-cost-bonus (req (if (and run (= (:server run) [:hq]) (zero? (:position run)))
                             [:credit -7 :click -1] nil))
  :effect (req (when (and run (= (:server run) [:hq]) (zero? (:position run)))
-                (register-successful-run state side (:server run))
-                (swap! state update-in [:runner :prompt] rest)
-                (handle-end-run state side)))}"
+                (when-completed (register-successful-run state side (:server run))
+                                (do (swap! state update-in [:runner :prompt] rest)
+                                    (handle-end-run state side)))))}"
 07052,Virus Breeding Ground,"{:events {:runner-turn-begins {:effect (effect (add-counter card :virus 1))}}
  :abilities [{:cost [:click 1]
               :msg (msg ""move 1 virus counter to "" (:title target))
