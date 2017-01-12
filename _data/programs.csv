@@ -273,7 +273,9 @@ id,name,code
                                                  card nil))}
                                  (get-card state virus) nil))))
               :msg (msg ""to trigger an ability on "" (:title target))}]}"
-08070,Hyperdriver,"{:abilities [{:label ""Remove Hyperdriver from the game to gain [Click] [Click] [Click]""
+08070,Hyperdriver,"{:flags {:runner-phase-12 (req true)}
+ :abilities [{:label ""Remove Hyperdriver from the game to gain [Click] [Click] [Click]""
+              :req (req (:runner-phase-12 @state))
               :effect (effect (move card :rfg) (gain :memory 3 :click 3))
               :msg ""gain [Click] [Click] [Click]""}]}"
 02003,Imp,"{:flags {:slow-trash (req (pos? (get-in card [:counter :virus] 0)))}
@@ -495,6 +497,9 @@ id,name,code
           :card-moved {:req (req (some #{(:cid target)} (:hosted-programs card)))
                        :effect (effect (update! (assoc card :hosted-programs (remove #(= (:cid target) %) (:hosted-programs card))))
                                        (lose :memory (:memoryunits target)))}}}"
+11086,Reaver,"{:events {:runner-trash {:req (req (and (first-event state :runner :runner-trash) (installed? target)))
+                         :effect (effect (draw :runner 1))
+                         :msg ""draw 1 card""}}}"
 04003,Rook,"{:abilities [{:cost [:click 1]
               :effect (req (let [r (get-card state card)
                                  hosted? (ice? (:host r))
@@ -542,14 +547,19 @@ id,name,code
               :msg (msg ""host "" (:title target) "" and gain 1 [Credits]"")
               :effect (req (when (host state side card target)
                              (gain state side :credit 1)))}]}"
-03046,Self-modifying Code,"{:abilities [{:prompt ""Choose a program to install"" :msg (msg ""install "" (:title target))
+03046,Self-modifying Code,"{:abilities [{:prompt ""Choose a program to install""
+              :msg (req (if (not= target ""No install"")
+                          (str ""install "" (:title target))
+                          (str ""shuffle their Stack"")))
               :priority true
-              :choices (req (cancellable (filter #(is-type? % ""Program"") (:deck runner)) :sorted))
+              :choices (req (cancellable
+                              (conj (vec (sort-by :title (filter #(is-type? % ""Program"") (:deck runner))))
+                                    ""No install"")))
               :cost [:credit 2]
-              :effect (effect (trigger-event :searched-stack nil)
-                              (trash card {:cause :ability-cost})
-                              (shuffle! :deck)
-                              (runner-install target))}]}"
+              :effect (req (trigger-event state side :searched-stack nil)
+                           (trash state side card {:cause :ability-cost})
+                           (shuffle! state side :deck)
+                           (when (not= target ""No install"") (runner-install state side target)))}]}"
 01028,Sneakdoor Beta,"{:abilities [{:cost [:click 1]
               :msg ""make a run on Archives""
               :makes-run true

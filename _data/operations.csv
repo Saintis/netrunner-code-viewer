@@ -57,23 +57,16 @@ id,name,code
 08091,An Offer You Cant Refuse,"{:delayed-completion false
  :prompt ""Choose a server"" :choices [""Archives"" ""R&D"" ""HQ""]
  :effect (req (let [serv target]
+                (show-wait-prompt state :corp (str ""Runner to decide on running "" target))
                 (continue-ability
                   state side
                   {:optional
                    {:prompt (msg ""Make a run on "" serv ""?"") :player :runner
                     :yes-ability {:msg (msg ""let the Runner make a run on "" serv)
-                                  :effect (req (let [s (cond
-                                                         (= serv ""HQ"") [:hq]
-                                                         (= serv ""R&D"") [:rd]
-                                                         (= serv ""Archives"") [:archives])
-                                                     ices (get-in @state (concat [:corp :servers] s [:ices]))]
-                                                 (swap! state assoc :per-run nil
-                                                        :run {:server s :position (count ices)
-                                                              :access-bonus 0 :run-effect nil :cannot-jack-out true})
-                                                 (gain-run-credits state :runner (:bad-publicity corp))
-                                                 (swap! state update-in [:runner :register :made-run] #(conj % (first s)))
-                                                 (trigger-event state :runner :run s)))}
-                    :no-ability {:effect (effect (as-agenda :corp (last (:discard corp)) 1))
+                                  :effect (effect (clear-wait-prompt :corp)
+                                                  (game.core/run eid serv nil card))}
+                    :no-ability {:effect (effect (clear-wait-prompt :corp)
+                                                 (as-agenda :corp (some #(when (= (:cid card) (:cid %)) %) (:discard corp)) 1))
                                  :msg ""add it to their score area as an agenda worth 1 agenda point""}}}
                  card nil)))}"
 01083,Anonymous Tip,"{:msg ""draw 3 cards""
@@ -93,7 +86,7 @@ id,name,code
  :choices (req (cancellable (:discard runner) :sorted))
  :msg (msg ""remove all copies of "" (:title target) "" in the Heap from the game"")
  :effect (req (doseq [c (filter #(= (:title target) (:title %)) (:discard runner))]
-                (move state side c :rfg))
+                (move state :runner c :rfg))
               (effect-completed state side eid card))}"
 08099,Back Channels,"{:prompt ""Choose an installed card in a server to trash""
  :choices {:req #(and (= (last (:zone %)) :content)
@@ -123,7 +116,8 @@ id,name,code
                  card nil)))}"
 02035,Big Brother,"{:req (req tagged)
  :msg ""give the Runner 2 tags""
- :effect (effect (tag-runner :runner 2))}"
+ :delayed-completion true
+ :effect (effect (tag-runner :runner eid 2))}"
 03013,Bioroid Efficiency Research,"{:implementation ""Derez is manual""
  :choices {:req #(and (ice? %)
                       (has-subtype? % ""Bioroid"")
@@ -157,7 +151,8 @@ id,name,code
                                              (system-msg state side (str ""hosts Casting Call on "" (:title agenda)))))}
                   card nil)))
  :events {:access {:req (req (= (:cid target) (:cid (:host card))))
-                   :effect (effect (tag-runner :runner 2)) :msg ""give the Runner 2 tags""}}}"
+                   :delayed-completion true
+                   :effect (effect (tag-runner :runner eid 2)) :msg ""give the Runner 2 tags""}}}"
 04012,Celebrity Gift,"{:choices {:max 5
            :req #(and (= (:side %) ""Corp"")
                       (in-hand? %))}
@@ -166,8 +161,9 @@ id,name,code
 05013,Cerebral Cast,"{:req (req (:successful-run runner-reg))
  :psi {:not-equal {:player :runner :prompt ""Take 1 tag or 1 brain damage?""
                    :choices [""1 tag"" ""1 brain damage""] :msg (msg ""give the Runner "" target)
+                   :delayed-completion true
                    :effect (req (if (= target ""1 tag"")
-                                  (tag-runner state side 1)
+                                  (tag-runner state side eid 1)
                                   (damage state side eid :brain 1 {:card card})))}}}"
 06025,Cerebral Static,"{:msg ""disable the Runner's identity""
  :effect (effect (disable-identity :runner))
@@ -218,8 +214,7 @@ id,name,code
                    :delayed-completion true
                    :effect (req (if tagged
                                   (damage state side eid :meat 1 {:card card})
-                                  (do (tag-runner state :runner 1)
-                                      (effect-completed state side eid card))))}}}}"
+                                  (tag-runner state :runner eid 1)))}}}}"
 10112,Election Day,"{:req (req (->> (get-in @state [:corp :hand])
                 (filter #(not (= (:cid %) (:cid card))))
                 (count)
@@ -227,6 +222,9 @@ id,name,code
  :msg (msg ""trash all cards in HQ and draw 5 cards"")
  :effect (effect (trash-cards (get-in @state [:corp :hand]))
                  (draw 5))}"
+11100,Enforced Curfew,"{:msg ""reduce the Runner's maximum hand size by 1""
+ :effect (effect (lose :runner :hand-size-modification 1))
+ :leave-play (effect (gain :runner :hand-size-modification 1))}"
 11033,Enforcing Loyalty,"{:trace {:base 3
          :label ""Trash a card not matching the faction of the Runner's identity""
          :delayed-completion true
@@ -327,13 +325,30 @@ id,name,code
            :req #(and (installed? %)
                       (is-type? % ""Resource""))}
  :effect (final-effect (trash-cards :runner targets))}"
+11090,Friends in High Places,"(let [fhelper (fn fhp [n] {:prompt ""Select a card in Archives to install with Friends in High Places""
+                           :priority -1
+                           :delayed-completion true
+                           :show-discard true
+                           :choices {:req #(and (= (:side %) ""Corp"")
+                                                (not (is-type? % ""Operation""))
+                                                (in-discard? %))}
+                           :effect (req (when-completed
+                                          (corp-install state side target nil nil)
+                                          (do (system-msg state side (str ""uses Friends in High Places to ""
+                                                                          (corp-install-msg target)))
+                                              (if (< n 2)
+                                                (continue-ability state side (fhp (inc n)) card nil)
+                                                (effect-completed state side eid card)))))})]
+  {:delayed-completion true
+   :effect (effect (continue-ability (fhelper 1) card nil))})"
 02070,Green Level Clearance,"{:msg ""gain 3 [Credits] and draw 1 card""
  :effect (effect (gain :credit 3) (draw))}"
 11016,Hard-Hitting News,"{:req (req (:made-run runner-reg))
  :trace {:base 4
+         :delayed-completion true
          :msg ""give the Runner 4 tags""
          :label ""Give the Runner 4 tags""
-         :effect (effect (tag-runner :runner 4))}}"
+         :effect (effect (tag-runner :runner eid 4))}}"
 11074,Hasty Relocation,"(letfn [(hr-final [chosen original]
           {:prompt (str ""The top cards of R&D will be "" (clojure.string/join  "", "" (map :title chosen)) ""."")
            :choices [""Done"" ""Start over""]
@@ -475,15 +490,17 @@ id,name,code
 06046,Manhunt,"{:events {:successful-run {:interactive (req true)
                            :req (req (first-event state side :successful-run))
                            :trace {:base 2 :msg ""give the Runner 1 tag""
-                                   :effect (effect (tag-runner :runner 1))}}}}"
+                                   :delayed-completion true
+                                   :effect (effect (tag-runner :runner eid 1))}}}}"
 05014,Medical Research Fundraiser,"{:msg ""gain 8 [Credits]. The Runner gains 3 [Credits]""
  :effect (effect (gain :credit 8) (gain :runner :credit 3))}"
 02116,Midseason Replacements,"{:req (req (:stole-agenda runner-reg))
  :trace {:base 6
          :msg ""give the Runner X tags""
          :label ""Give the Runner X tags""
-         :effect (effect (tag-runner :runner (- target (second targets)))
-                         (system-msg (str ""gives the Runner "" (- target (second targets)) "" tags"")))}}"
+         :delayed-completion true
+         :effect (effect (system-msg (str ""gives the Runner "" (- target (second targets)) "" tags""))
+                         (tag-runner :runner eid (- target (second targets))))}}"
 05015,Mushin No Shin,"{:prompt ""Choose a card to install from HQ""
  :choices {:req #(and (#{""Asset"" ""Agenda"" ""Upgrade""} (:type %))
                       (= (:side %) ""Corp"")
@@ -716,7 +733,8 @@ id,name,code
  :trace {:base 3
          :msg ""give the Runner 1 tag""
          :label ""Give the Runner 1 tag""
-         :effect (effect (tag-runner :runner 1))}}"
+         :delayed-completion true
+         :effect (effect (tag-runner :runner eid 1))}}"
 11057,Service Outage,"(let [add-effect (fn [state side card]
                    (update! state side (assoc card :so-activated true))
                    (run-cost-bonus state side [:credit 1]))
@@ -786,8 +804,11 @@ id,name,code
                                              (if (= target ""Yes"")
                                                {:msg (msg ""take 1 tag to prevent "" (:title c)
                                                           "" from being trashed"")
-                                                :effect (final-effect (tag-runner 1 {:unpreventable true}))}
-                                               {:effect (final-effect (trash c)) :msg (msg ""trash "" (:title c))})
+                                                :delayed-completion true
+                                                :effect (effect (tag-runner eid 1 {:unpreventable true}))}
+                                               {:delayed-completion true
+                                                :effect (effect (trash eid c nil))
+                                                :msg (msg ""trash "" (:title c))})
                                              card nil))}
                           card nil)))}}"
 11035,Special Report,"{:prompt ""Choose any number of cards in HQ to shuffle into R&D""

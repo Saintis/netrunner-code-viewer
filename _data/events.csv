@@ -4,9 +4,11 @@ id,name,code
                            {:msg (msg ""force the Corp to lose "" (min 5 (:credit corp))
                                       "" [Credits], gain "" (* 2 (min 5 (:credit corp)))
                                       "" [Credits] and take 2 tags"")
-                            :effect (effect (tag-runner 2)
-                                            (gain :runner :credit (* 2 (min 5 (:credit corp))))
-                                            (lose :corp :credit (min 5 (:credit corp))))}} card))}"
+                            :delayed-completion true
+                            :effect (req (when-completed (tag-runner state :runner 2)
+                                                         (do (gain state :runner :credit (* 2 (min 5 (:credit corp))))
+                                                             (lose state :corp :credit (min 5 (:credit corp)))
+                                                             (effect-completed state side eid))))}} card))}"
 07031,Amped Up,"{:msg ""gain [Click][Click][Click] and suffer 1 brain damage""
  :effect (effect (gain :click 3) (damage eid :brain 1 {:unpreventable true :card card}))}"
 11007,"Another Day, Another Paycheck","{:events {:agenda-stolen
@@ -91,14 +93,30 @@ id,name,code
                                                    (effect-completed state side eid card)))))}} card))})"
 06115,Code Siphon,"{:effect (effect (run :rd
                       {:replace-access
-                       {:prompt ""Choose a program to install""
+                       {:delayed-completion true
+                        :prompt ""Choose a program to install""
                         :msg (msg ""install "" (:title target) "" and take 1 tag"")
                         :choices (req (filter #(is-type? % ""Program"") (:deck runner)))
                         :effect (effect (trigger-event :searched-stack nil)
                                         (shuffle! :deck)
                                         (install-cost-bonus [:credit (* -3 (count (get-in corp [:servers :rd :ices])))])
                                         (runner-install target)
-                                        (tag-runner 1) )}} card))}"
+                                        (tag-runner eid 1) )}} card))}"
+11083,Cold Read,"(let [end-effect {:prompt ""Choose a program that was used during the run to trash ""
+                  :choices {:req #(card-is? % :type ""Program"")}
+                  :msg (msg ""trash"" (:title target))
+                  :effect (effect (trash target {:unpreventable true}))}]
+  {:delayed-completion true
+   :prompt ""Choose a server""
+   :recurring 4
+   :choices (req runnable-servers)
+   :effect (req (let [c (move state side (assoc card :zone '(:discard)) :play-area)]
+                  (card-init state side c false)
+                  (game.core/run state side (make-eid state) target
+                                 {:end-run {:delayed-completion true
+                                            :effect (effect (trash c)
+                                                            (continue-ability end-effect card nil))}}
+                                 c)))})"
 10025,Corporate Scandal,"{:msg ""give the Corp 1 additional bad publicity""
  :effect (req (swap! state update-in [:corp :has-bad-pub] inc))
  :leave-play (req (swap! state update-in [:corp :has-bad-pub] dec))}"
@@ -354,31 +372,37 @@ id,name,code
  :choices (req (:scored runner))
  :effect (effect (forfeit target) (gain :corp :bad-publicity 1))
  :msg (msg ""forfeit "" (:title target) "" and give the Corp 1 bad publicity"")}"
-11062,Frantic Coding,"{:effect (req (let [topten (take 10 (:deck runner))]
-                (prompt! state :runner card (str ""The top 10 cards of the Stack are ""
-                                                 (join "", "" (map :title topten))) [""OK""] {})
-                (resolve-ability
-                  state side
-                  {:prompt ""Install a program?""
-                   :choices (conj (vec (sort-by :title (filter #(and (is-type? % ""Program"")
-                                                                     (can-pay? state side nil
-                                                                               (modified-install-cost
-                                                                                 state side % [:credit -5])))
-                                                               topten))) ""No install"")
-                   :effect (req (if (not= target ""No install"")
-                                  (do (install-cost-bonus state side [:credit -5])
-                                      (runner-install state side target)
-                                      (doseq [c (remove (fn [installed] (= (:cid installed) (:cid target))) topten)]
-                                        (trash state side c {:unpreventable true}))
-                                      (system-msg
-                                        state side
-                                        (str ""trashes "" (join "", "" (map :title (remove (fn [installed]
-                                                                                         (= (:cid installed)
-                                                                                            (:cid target))) topten))))))
-                                  (do (doseq [c topten] (trash state side c {:unpreventable true}))
-                                      (system-msg
-                                        state side
-                                        (str ""trashes "" (join "", "" (map :title topten)))))))} card nil)))}"
+11062,Frantic Coding,"{:delayed-completion true
+ :events {:runner-shuffle-deck nil}
+ :effect
+ (req (let [topten (take 10 (:deck runner))]
+        (prompt! state :runner card (str ""The top 10 cards of the Stack are ""
+                                         (join "", "" (map :title topten))) [""OK""] {})
+        (continue-ability
+          state side
+          {:prompt ""Install a program?""
+           :choices (conj (vec (sort-by :title (filter #(and (is-type? % ""Program"")
+                                                             (can-pay? state side nil
+                                                                       (modified-install-cost state side % [:credit -5])))
+                                                       topten))) ""No install"")
+           :delayed-completion true
+           :effect (req (if (not= target ""No install"")
+                          (do (register-events state side
+                                               {:runner-shuffle-deck
+                                                {:effect (effect (update! (assoc card :shuffle-occurred true)))}}
+                                               (assoc card :zone '(:discard)))
+                              (install-cost-bonus state side [:credit -5])
+                              (let [to-trash (remove #(= (:cid %) (:cid target)) topten)]
+                                (when-completed (runner-install state side target nil)
+                                                (let [card (get-card state (assoc card :zone '(:discard)))]
+                                                  (if (not (:shuffle-occurred card))
+                                                    (do (system-msg state side (str ""trashes "" (join "", "" (map :title to-trash))))
+                                                        (doseq [c to-trash] (trash state side c {:unpreventable true}))
+                                                        (effect-completed state side eid))
+                                                    (do (system-msg state side ""does not have to trash cards because the stack was shuffled"")
+                                                        (effect-completed state side eid)))))))
+                          (do (doseq [c topten] (trash state side c {:unpreventable true}))
+                              (system-msg state side (str ""trashes "" (join "", "" (map :title topten)))))))} card nil)))}"
 10045,"""Freedom Through Equality""","{:events {:agenda-stolen {:msg ""add it to their score area as an agenda worth 1 agenda point""
                           :effect (effect (as-agenda :runner card 1))}}}"
 03033,Freelance Coding Contract,"{:choices {:max 5
@@ -425,28 +449,29 @@ id,name,code
                 :effect (effect (draw :runner 3)) :msg ""draw 3 cards""}}"
 08041,Immolation Script,"{:effect (effect (run :archives nil card)
                  (register-events (:events (card-def card)) (assoc card :zone '(:discard))))
- :events {:successful-run
-          {:silent (req true)
-           :req (req (= target :archives))
-           :effect (req (when-completed
-                          (resolve-ability state side
-                            {:delayed-completion true
-                             :prompt ""Choose a piece of ICE in Archives""
-                             :choices (req (filter ice? (:discard corp)))
-                             :effect (req (let [icename (:title target)]
-                                            (continue-ability
-                                              state side
-                                              {:delayed-completion true
-                                               :prompt (msg ""Choose a rezzed copy of "" icename "" to trash"")
-                                               :choices {:req #(and (ice? %)
-                                                                    (rezzed? %)
-                                                                    (= (:title %) icename))}
-                                               :msg (msg ""trash "" (card-str state target))
-                                               :effect (req (trash state :corp target)
-                                                            (unregister-events state side card)
-                                                            (effect-completed state side eid card))} card nil)))}
-                           card nil)
-                          (do-access state side eid (:server run))))}}}"
+ :events {:pre-access
+          {:delayed-completion true
+           :req (req (and (= target :archives)
+                          ;; don't prompt unless there's at least 1 rezzed ICE matching one in Archives
+                          (not-empty (clojure.set/intersection
+                                       (into #{} (map :title (filter #(ice? %) (:discard corp))))
+                                       (into #{} (map :title (filter #(rezzed? %) (all-installed state :corp))))))))
+           :effect (req (continue-ability state side
+                          {:delayed-completion true
+                           :prompt ""Choose a piece of ICE in Archives""
+                           :choices (req (filter ice? (:discard corp)))
+                           :effect (req (let [icename (:title target)]
+                                          (continue-ability state side
+                                            {:delayed-completion true
+                                             :prompt (msg ""Choose a rezzed copy of "" icename "" to trash"")
+                                             :choices {:req #(and (ice? %)
+                                                                  (rezzed? %)
+                                                                  (= (:title %) icename))}
+                                             :msg (msg ""trash "" (card-str state target))
+                                             :effect (req (trash state :corp target)
+                                                          (unregister-events state side card)
+                                                          (effect-completed state side eid))} card nil)))}
+                         card nil))}}}"
 09038,Independent Thinking,"(let [cards-to-draw (fn [ts] (* (count ts) (if (some #(and (not (facedown? %)) (has-subtype? % ""Directive"")) ts) 2 1)))]
   {:choices {:max 5 :req #(and (:installed %) (= (:side %) ""Runner""))}
    :effect (effect (trash-cards targets) (draw :runner (cards-to-draw targets)))
@@ -529,6 +554,17 @@ id,name,code
  :prompt ""Choose a server""
  :choices (req runnable-servers)
  :effect (effect (run target nil card))}"
+11087,Interdiction,"(let [ab (effect (register-turn-flag!
+                  card :can-rez
+                  (fn [state side card]
+                    (if (and (= (:active-player @state) :runner) (not (ice? card)))
+                      ((constantly false)
+                       (toast state :corp ""Cannot rez non-ICE on the Runner's turn due to Interdiction""))
+                      true))))]
+  {:msg ""prevent the Corp from rezzing non-ICE cards on the Runner's turn""
+   :effect ab
+   :events {:runner-turn-begins {:effect ab}}
+   :leave-play (req (clear-all-flags-for-card! state side card))})"
 07033,Itinerant Protesters,"{:msg ""reduce the Corp's maximum hand size by 1 for each bad publicity""
  :effect (req (lose state :corp :hand-size-modification (:bad-publicity corp))
               (add-watch state :itin
@@ -628,6 +664,22 @@ id,name,code
                 (some #{:archives} (:successful-run runner-reg))))
  :effect (effect (as-agenda :runner (first (:play-area runner)) 1))
  :msg ""add it to their score area as an agenda worth 1 agenda point""}"
+11082,On the Lam,"{:req (req (some #(is-type? % ""Resource"") (all-installed state :runner)))
+ :prompt ""Choose a resource to host On the Lam""
+ :choices {:req #(and (is-type? % ""Resource"")
+                      (installed? %))}
+ :effect (effect (host target (assoc card :zone [:discard]))
+                 (system-msg (str ""hosts On the Lam on "" (:title target))))
+ :prevent {:tag [:all] :damage [:meat :net :brain]}
+ :abilities [{:label ""[Trash]: Avoid 3 tags""
+              :msg ""avoid up to 3 tags""
+              :effect (effect (tag-prevent 3) (trash card {:cause :ability-cost}))}
+             {:label ""[Trash]: Prevent up to 3 damage""
+              :msg ""prevent up to 3 damage""
+              :effect (effect (damage-prevent :net 3)
+                              (damage-prevent :meat 3)
+                              (damage-prevent :brain 3)
+                              (trash card {:cause :ability-cost}))}]}"
 10080,Out of the Ashes,"(letfn [(ashes-flag []
           {:runner-phase-12 {:priority -1
                              :once :per-turn
@@ -794,7 +846,10 @@ id,name,code
                                (or (card-is? card :type ""Asset"")
                                    (card-is? card :type ""Upgrade""))
                                (not (has-subtype? card ""Region""))))
-        (rumor [state] (filter eligible? (all-installed state :corp)))]
+        (rumor [state] (filter eligible? (concat (all-installed state :corp)
+                               (get-in @state [:corp :hand])
+                               (get-in @state [:corp :deck])
+                               (get-in @state [:corp :discard]))))]
 {:leave-play (req (doseq [c (rumor state)]
                     (enable-card state :corp c)))
  :effect (req (doseq [c (rumor state)]
@@ -996,14 +1051,17 @@ id,name,code
           {:effect (req (advancement-cost-bonus
                           state side (count (filter #(= (:title %) (:title target)) (:scored corp)))))}}}"
 07053,Uninstall,"{:choices {:req #(and (installed? %)
+                      (not (facedown? %))
                       (#{""Program"" ""Hardware""} (:type %)))}
  :msg (msg ""move "" (:title target) "" to their Grip"")
  :effect (effect (move target :hand))}"
 02021,Vamp,"{:effect (effect (run :hq {:req (req (= target :hq))
                            :replace-access
-                           {:prompt ""How many [Credits]?"" :choices :credit
+                           {:delayed-completion true
+                            :prompt ""How many [Credits]?"" :choices :credit
                             :msg (msg ""take 1 tag and make the Corp lose "" target "" [Credits]"")
-                            :effect (effect (lose :corp :credit target) (tag-runner 1))}} card))}"
+                            :effect (effect (lose :corp :credit target)
+                                            (tag-runner eid 1))}} card))}"
 07035,Wanton Destruction,"{:effect (effect (run :hq {:req (req (= target :hq))
                            :replace-access
                            {:msg (msg ""force the Corp to discard "" target "" cards from HQ at random"")

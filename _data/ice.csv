@@ -73,7 +73,8 @@ id,name,code
  :abilities [(gain-credits 1)]
  :subroutines [end-the-run]}"
 08016,Bandwidth,"{:subroutines [{:msg ""give the Runner 1 tag""
-                :effect (effect (tag-runner :runner 1)
+                :delayed-completion true
+                :effect (effect (tag-runner :runner eid 1)
                                 (register-events
                                   {:successful-run {:effect (effect (lose :runner :tag 1))
                                                     :msg ""make the Runner lose 1 tag""}
@@ -154,36 +155,19 @@ id,name,code
    :events {:runner-turn-ends turn-end-ability
             :corp-turn-ends turn-end-ability}
    :subroutines [end-the-run]})"
-08055,Clairvoyant Monitor,"{:subroutines [(do-psi {:label ""Place 1 advancement token and end the run""
-                        :player :corp
-                        :prompt ""Choose a target for Clairvoyant Monitor""
-                        :msg (msg ""place 1 advancement token on ""
-                                  (card-str state target) "" and end the run"")
-                        :choices {:req installed?}
-                        :effect (effect (add-prop target :advance-counter 1 {:placed true})
-                                        (end-run))})]}"
 11013,Chrysalis,"{:subroutines [(do-net-damage 2)]
  :access {:delayed-completion true
           :req (req (not= (first (:zone card)) :discard))
-          :effect (effect (show-wait-prompt :runner ""Corp to decide to trigger Chrysalis"")
+          :effect (effect (show-wait-prompt :corp ""Runner to decide to break Chrysalis subroutine"")
                           (continue-ability
-                            {:optional
-                             {:req (req (not= (first (:zone card)) :discard))
-                              :prompt ""Force the Runner to encounter Chrysalis?""
-                              :yes-ability {:delayed-completion true
-                                            :effect (effect (system-msg :corp ""forces the Runner to encounter Chrysalis"")
-                                                            (clear-wait-prompt :runner)
-                                                            (continue-ability
-                                                              :runner {:optional
-                                                                       {:player :runner
-                                                                        :prompt ""Allow Chrysalis subroutine to fire?""
-                                                                        :priority 1
-                                                                        :yes-ability {:delayed-completion true
-                                                                                      :effect (effect (play-subroutine eid {:card card :subroutine 0}))}
-                                                                        :no-ability {:effect (effect (effect-completed eid))}}}
-                                                              card nil))}
-                              :no-ability {:effect (effect (system-msg :corp ""declines to force the Runner to encounter Chrysalis"")
-                                                           (clear-wait-prompt :runner))}}}
+                            :runner {:optional
+                                     {:player :runner
+                                      :prompt ""Allow Chrysalis subroutine to fire?""
+                                      :priority 1
+                                      :yes-ability {:effect (effect (clear-wait-prompt :corp)
+                                                                    (play-subroutine eid {:card card :subroutine 0}))}
+                                      :no-ability {:effect (effect (clear-wait-prompt :corp)
+                                                                   (effect-completed eid))}}}
                            card nil))}}"
 01075,Chum,"{:subroutines [{:label ""Give +2 strength to next ICE Runner encounters""
                 :req (req this-server)
@@ -199,6 +183,14 @@ id,name,code
                                (update-all-ice state side)))}
                (do-net-damage 3)]
  :events {:pre-ice-strength nil :run-ends nil}}"
+08055,Clairvoyant Monitor,"{:subroutines [(do-psi {:label ""Place 1 advancement token and end the run""
+                        :player :corp
+                        :prompt ""Choose a target for Clairvoyant Monitor""
+                        :msg (msg ""place 1 advancement token on ""
+                                  (card-str state target) "" and end the run"")
+                        :choices {:req installed?}
+                        :effect (effect (add-prop target :advance-counter 1 {:placed true})
+                                        (end-run))})]}"
 10074,Cobra,{:subroutines [trash-program (do-net-damage 2)]}
 08014,Cortex Lock,"{:subroutines [{:label ""Do 1 net damage for each unused memory unit the Runner has""
                 :msg (msg ""do "" (:memory runner) "" net damage"")
@@ -259,15 +251,17 @@ id,name,code
                      :effect (req (end-run state :runner)
                                   (system-msg state :runner ""chooses to end the run on encountering Data Raven""))}
                     {:label ""Take 1 tag""
-                     :effect (req (tag-runner state :runner 1)
-                                  (system-msg state :runner ""chooses to take 1 tag on encountering Data Raven""))}]
+                     :delayed-completion true
+                     :effect (req (system-msg state :runner ""chooses to take 1 tag on encountering Data Raven"")
+                                  (tag-runner state :runner eid 1))}]
  :subroutines [(trace-ability 3 add-power-counter)]}"
 11075,Data Ward,"{:runner-abilities [{:label ""Pay 3 [Credits]""
                      :effect (req (pay state :runner card :credit 3)
                                   (system-msg state :runner ""chooses to pay 3 [Credits] on encountering Data Ward""))}
                     {:label ""Take 1 tag""
-                     :effect (req (tag-runner state :runner 1)
-                                  (system-msg state :runner ""chooses to take 1 tag on encountering Data Ward""))}]
+                     :delayed-completion true
+                     :effect (req (system-msg state :runner ""chooses to take 1 tag on encountering Data Ward"")
+                                  (tag-runner state :runner eid 1))}]
  :subroutines [{:label ""End the run if the Runner is tagged""
                 :req (req tagged)
                 :msg ""end the run""
@@ -283,7 +277,8 @@ id,name,code
  :strength-bonus (req (get-in card [:counter :power] 0))
  :subroutines [(trace-ability 2 {:label ""Give the Runner 1 tag and end the run""
                                  :msg ""give the Runner 1 tag and end the run""
-                                 :effect (effect (tag-runner :runner 1)
+                                 :delayed-completion true
+                                 :effect (effect (tag-runner :runner eid 1)
                                                  (end-run))})]}"
 02110,Eli 1.0,"{:subroutines [end-the-run]
  :runner-abilities [(runner-break [:click 1] 1)]}"
@@ -304,6 +299,9 @@ id,name,code
                {:msg ""draw 1 card"" :effect (effect (draw))}]}"
 06111,Excalibur,"{:subroutines [{:label ""The Runner cannot make another run this turn""
                 :msg ""prevent the Runner from making another run"" :effect (effect (prevent-run))}]}"
+11089,Fairchild,"{:subroutines [end-the-run
+               (do-brain-damage 1)]
+ :runner-abilities [(runner-break [:credit 4] 1)]}"
 11010,Fairchild 1.0,"{:subroutines [{:label ""Force the Runner to pay 1 [Credits] or trash an installed card""
                 :msg ""force the Runner to pay 1 [Credits] or trash an installed card""
                 :player :runner
@@ -451,14 +449,16 @@ id,name,code
 01062,Ichi 1.0,"{:subroutines [trash-program
                (trace-ability 1 {:label ""Give the Runner 1 tag and do 1 brain damage""
                                  :msg ""give the Runner 1 tag and do 1 brain damage""
-                                 :effect (effect (damage eid :brain 1 {:card card})
-                                                 (tag-runner :runner 1))})]
+                                 :delayed-completion true
+                                 :effect (req (when-completed (damage state :runner :brain 1 {:card card})
+                                                              (tag-runner state :runner eid 1)))})]
  :runner-abilities [(runner-break [:click 1] 1)]}"
 03017,Ichi 2.0,"{:subroutines [trash-program
                (trace-ability 3 {:label ""Give the Runner 1 tag and do 1 brain damage""
                                  :msg ""give the Runner 1 tag and do 1 brain damage""
-                                 :effect (effect (damage eid :brain 1 {:card card})
-                                                 (tag-runner :runner 1))})]
+                                 :delayed-completion true
+                                 :effect (req (when-completed (damage state :runner :brain 1 {:card card})
+                                                              (tag-runner state :runner eid 1)))})]
  :runner-abilities [(runner-break [:click 2] 2)]}"
 06027,Information Overload,"{:implementation ""Encounter effect is manual""
  :abilities [{:label ""Gain subroutines""
@@ -560,14 +560,30 @@ id,name,code
                 :msg (msg ""do "" (if (> 3 (+ (:advance-counter card 0) (:extra-advance-counter card 0))) 1 3) "" net damage"")
                 :effect (effect (damage eid :net (if (> 3 (+ (:advance-counter card 0) (:extra-advance-counter card 0))) 1 3) {:card card}))}
                {:label ""Give the Runner 1 tag (and end the run)""
+                :delayed-completion true
                 :msg (msg ""give the Runner 1 tag""
-                       (when (<= 3 (+ (:advance-counter card 0) (:extra-advance-counter card 0))) "" and end the run""))
-                :effect (req (tag-runner state :runner 1)
-                          (when (<= 3 (+ (:advance-counter card 0) (:extra-advance-counter card 0)))
+                          (when (<= 3 (+ (:advance-counter card 0) (:extra-advance-counter card 0))) "" and end the run""))
+                :effect (req (tag-runner state :runner eid 1)
+                             (when (<= 3 (+ (:advance-counter card 0) (:extra-advance-counter card 0)))
                                (end-run state side)))}]}"
 06091,Merlin,(grail-ice (do-net-damage 2))
 08039,Meru Mati,"{:subroutines [end-the-run]
  :strength-bonus (req (if (= (second (:zone card)) :hq) 3 0))}"
+11092,Mind Game,"{:subroutines [(do-psi {:label ""Redirect the run to another server""
+                        :player :corp
+                        :prompt ""Choose a server""
+                        :choices (req servers)
+                        :msg (msg ""redirect the run to "" target)
+                        :effect (req (let [dest (server->zone state target)]
+                                       (swap! state update-in [:run]
+                                              #(assoc % :position (count (get-in corp (conj dest :ices)))
+                                                        :server (rest dest)))))})]
+ :runner-abilities [{:label ""Add an installed card to the bottom of your Stack""
+                     :prompt ""Choose one of your installed cards""
+                     :choices {:req #(and (installed? %)
+                                          (= (:side %) ""Runner""))}
+                     :effect (effect (move target :deck)
+                                     (system-msg :runner (str ""adds "" (:title target) "" to the bottom of their Stack"")))}]}"
 03018,Minelayer,"{:subroutines [{:msg ""install an ICE from HQ""
                 :choices {:req #(and (ice? %)
                                      (in-hand? %))}
@@ -664,10 +680,28 @@ id,name,code
  :abilities [{:label ""Gain subroutines""
               :msg (msg ""gain "" (:advance-counter card 0) "" subroutines"")}]
  :subroutines [(tag-trace 2)]}"
+11098,Sapper,"{:subroutines [trash-program]
+ :access {:delayed-completion true
+          :req (req (and (not= (first (:zone card)) :discard)
+                         (some #(is-type? % ""Program"") (all-installed state :runner))))
+          :effect (effect (show-wait-prompt :corp ""Runner to decide to break Sapper subroutine"")
+                          (continue-ability
+                            :runner {:optional
+                                     {:player :runner
+                                      :prompt ""Allow Sapper subroutine to fire?""
+                                      :priority 1
+                                      :yes-ability {:effect (req (clear-wait-prompt state :corp)
+                                                                 (show-wait-prompt state :runner ""Corp to trash a program with Sapper"")
+                                                                 (play-subroutine state :corp eid {:card card :subroutine 0}))}
+                                      :no-ability {:effect (effect (clear-wait-prompt :corp)
+                                                                   (effect-completed eid))}}}
+                           card nil))}}"
 07019,Searchlight,"{:advanceable :always
  ;; Could replace this with (tag-trace advance-counters).
  :subroutines [{:label ""Trace X - Give the Runner 1 tag""
-                :trace {:base advance-counters :effect (effect (tag-runner :runner 1))
+                :trace {:base advance-counters
+                        :delayed-completion true
+                        :effect (effect (tag-runner :runner eid 1))
                         :msg ""give the Runner 1 tag""}}]}"
 02034,Sensei,"{:subroutines [{:label ""Give each other ICE encountered \""End the run\"" for the remainder of the run""
                 :msg (msg ""give each other ICE encountered \""[Subroutine] End the run\"" after all its other subroutines for the remainder of the run"")}]}"
@@ -690,7 +724,8 @@ id,name,code
                         :effect  (effect (move :runner target :deck))}}
                {:label  ""Give the Runner 1 tag""
                 :msg    ""give the Runner 1 tag""
-                :effect (effect (tag-runner :runner 1))}]
+                :delayed-completion true
+                :effect (effect (tag-runner :runner eid 1))}]
  :runner-abilities [(runner-break [:click 2] 2)]}"
 04115,Shinobi,"{:effect take-bad-pub
  :subroutines [(trace-ability 1 (do-net-damage 1))
@@ -755,6 +790,20 @@ id,name,code
                                      (is-type? % ""Program"")
                                      (has-subtype? % ""AI""))}}]}"
 06009,Taurus,(constellation-ice trash-hardware)
+11095,Thoth,"{:implementation ""Encounter effect is manual""
+ :abilities [give-tag]
+ :runner-abilities [{:label ""Take 1 tag""
+                     :delayed-completion true
+                     :effect (req (system-msg state :runner ""takes 1 tag on encountering Thoth"")
+                                  (tag-runner state :runner eid 1))}]
+ :subroutines [(trace-ability 4 {:label ""Do 1 net damage for each Runner tag""
+                                 :delayed-completion true
+                                 :msg (msg ""do "" (:tag runner) "" net damage"")
+                                 :effect (effect (damage eid :net (:tag runner) {:card card}))})
+               (trace-ability 4 {:label ""Runner loses 1 [Credits] for each tag""
+                                 :delayed-completion true
+                                 :msg (msg ""force the Runner to lose "" (:tag runner) "" [Credits]"")
+                                 :effect (effect (lose :runner :credit (:tag runner)))})]}"
 09017,TL;DR,"{:subroutines [{:msg ""duplicate subroutines on next piece of ICE encountered this run""}]}"
 02017,TMI,"{:trace {:base 2
          :msg ""keep TMI rezzed""

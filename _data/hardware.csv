@@ -2,21 +2,22 @@ id,name,code
 01038,Akamatsu Mem Chip,{:in-play [:memory 1]}
 07044,Archives Interface,"{:events
  {:successful-run
-  {:silent (req true)
-   :delayed-completion true
-   :req (req (= target :archives))
+  {:delayed-completion true
+   :req (req (and (= target :archives)
+                  (not-empty (:discard corp))))
    :effect (effect (continue-ability
                      {:optional
-                      {:prompt ""Use Archives Interface to remove a card from the game instead of accessing it?""
+                      {:delayed-completion true
+                       :prompt ""Use Archives Interface to remove a card from the game instead of accessing it?""
                        :yes-ability
                        {:delayed-completion true
                         :effect (req (swap! state update-in [:corp :discard] #(map (fn [c] (assoc c :seen true)) %))
-                                     (continue-ability
-                                       state side
+                                     (continue-ability state side
                                        {:prompt ""Choose a card in Archives to remove from the game instead of accessing""
                                         :choices (req (:discard corp))
                                         :msg (msg ""remove "" (:title target) "" from the game"")
-                                        :effect (effect (move :corp target :rfg))} card nil))}}} card nil))}}}"
+                                        :effect (effect (move :corp target :rfg))} card nil))}
+                       :no-ability {:effect (req (effect-completed state side eid))}}} card nil))}}}"
 06079,Astrolabe,"{:in-play [:memory 1]
  :events {:server-created {:msg ""draw 1 card""
                            :effect (effect (draw :runner))}}}"
@@ -154,18 +155,22 @@ id,name,code
  :in-play [:memory 3]
  :events {:runner-install
           {:optional
-           {:req (req (has-subtype? target ""Caïssa""))
-            :delayed-completion true
-            :prompt ""Use Deep Red to trigger the [Click] ability of the installed Caïssa?""
-            :yes-ability {:effect (req (let [cid (:cid (first (map last (turn-events state :runner :pre-install))))
-                                             caissa (find-cid cid (all-installed state :runner))]
+           {:delayed-completion true
+            :req (req (has-subtype? target ""Caïssa""))
+            :prompt ""Use Deep Red?"" :priority 1
+            :yes-ability {:delayed-completion true
+                          :effect (req (let [cid (:cid target)]
                                          (continue-ability state side
-                                           {:msg (msg ""trigger the [Click] ability of "" (:title caissa)
+                                           {:delayed-completion true
+                                            :prompt ""Choose the just-installed Caïssa to have Deep Red trigger its [Click] ability""
+                                            :choices {:req #(= cid (:cid %))}
+                                            :msg (msg ""trigger the [Click] ability of "" (:title target)
                                                       "" without spending [Click]"")
-                                            :effect (effect (gain :click 1)
-                                                            (play-ability {:card (get-card state caissa) :ability 0}))}
+                                            :effect (req (gain state :runner :click 1)
+                                                         (play-ability state side {:card target :ability 0})
+                                                         (effect-completed state side eid))}
                                           card nil)))}
-            :no-ability {:effect (req (effect-completed state side eid card))}}}}}"
+            :no-ability {:effect (req (effect-completed state side eid))}}}}}"
 01024,Desperado,"{:in-play [:memory 1]
  :events {:successful-run {:silent (req true)
                            :msg ""gain 1 [Credits]"" :effect (effect (gain :credit 1))}}}"
@@ -310,6 +315,7 @@ id,name,code
                            (move target :hand))}}}"
 10007,Maya,"{:in-play [:memory 2]
  :abilities [{:once :per-turn
+              :delayed-completion true
               :label ""Move this accessed card to bottom of R&D""
               :req (req (when-let [c (:card (first (get-in @state [:runner :prompt])))]
                           (in-deck? c)))
@@ -318,18 +324,18 @@ id,name,code
                              (when (is-type? c ""Agenda"") ; trashing before the :access events actually fire; fire them manually
                                (resolve-steal-events state side c))
                              (move state :corp c :deck)
-                             (tag-runner state :runner 1)
                              (close-access-prompt state side)
-                             (effect-completed state side eid card)))}
+                             (tag-runner state :runner eid 1)))}
              {:once :per-turn
               :label ""Move a previously accessed card to bottom of R&D""
               :effect (effect (resolve-ability
                                 {; only allow targeting cards that were accessed this turn -- not perfect, but good enough?
+                                 :delayed-completion true
                                  :choices {:req #(some (fn [c] (= (:cid %) (:cid c)))
                                                        (map first (turn-events state side :access)))}
                                  :msg (msg ""move "" (:title target) "" to the bottom of R&D"")
                                  :effect (req (move state :corp target :deck)
-                                              (tag-runner state :runner 1)
+                                              (tag-runner state :runner eid 1)
                                               (swap! state update-in [side :prompt] rest)
                                               (when-let [run (:run @state)]
                                                 (when (and (:ended run) (empty? (get-in @state [:runner :prompt])))
@@ -548,10 +554,11 @@ id,name,code
                            (trash state side (get-card state card) {:cause :ability-cost}))}]}"
 09047,Security Nexus,"{:in-play [:memory 1 :link 1]
  :abilities [{:req (req (:run @state))
+              :delayed-completion true
               :msg ""force the Corp to initiate a trace""
               :label ""Trace 5 - Give the Runner 1 tag and end the run""
               :trace {:once :per-turn :base 5 :msg ""give the Runner 1 tag and end the run""
-                      :effect (effect (tag-runner :runner 1) (end-run))
+                      :effect (effect (tag-runner :runner eid 1) (end-run))
                       :unsuccessful {:msg ""bypass the current ICE""}}}]}"
 04104,Silencer,{:recurring 1}
 08042,Skulljack,"{:effect (effect (damage eid :brain 1 {:card card}))
