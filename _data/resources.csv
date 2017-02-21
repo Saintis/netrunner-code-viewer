@@ -1,4 +1,10 @@
 id,name,code
+11106,Aaron Marrón,"(let [am {:effect (effect (add-counter card :power 2)
+                          (system-msg :runner (str ""places 2 power counters on Aaron Marrón"")))}]
+  {:abilities [{:counter-cost [:power 1]
+                :msg ""remove 1 tag and draw 1 card""
+                :effect (effect (lose :tag 1) (draw))}]
+   :events {:agenda-scored am :agenda-stolen am}})"
 01052,Access to Globalsec,{:in-play [:link 1]}
 04062,Activist Support,"{:events
  {:corp-turn-begins {:req (req (= 0 (:tag runner)))
@@ -71,10 +77,10 @@ id,name,code
               :effect (effect (trigger-event :searched-stack nil)
                               (shuffle! :deck)
                               (runner-install target))}]}"
-10098,Bhagat,"{:events {:successful-run {:req (req (= target :hq))
+10098,Bhagat,"{:events {:successful-run {:req (req (and (= target :hq)
+                                          (first-successful-run-on-server? state :hq)))
                            :msg ""force the Corp to trash the top card of R&D""
-                           :effect (effect (mill :corp))
-                           :once :per-turn}}}"
+                           :effect (effect (mill :corp))}}}"
 01029,Bank Job,"{:data {:counter {:credit 8}}
  :events {:successful-run
           {:silent (req true)
@@ -350,7 +356,7 @@ id,name,code
           :successful-run {:interactive (req true)
                            :optional
                            {:delayed-completion true
-                            :req (req (first-event state side :successful-run))
+                            :req (req (first-event? state side :successful-run))
                             :prompt ""Use Find the Truth to look at the top card of R&D?""
                             :yes-ability {:msg ""look at the top card of R&D""
                                           :effect (req (prompt! state :runner card (str ""The top card of R&D is ""
@@ -423,7 +429,8 @@ id,name,code
 06059,Hades Shard,"{:abilities [{:msg ""access all cards in Archives""
               :effect (req (trash state side card {:cause :ability-cost})
                            (swap! state update-in [:corp :discard] #(map (fn [c] (assoc c :seen true)) %))
-                           (swap! state update-in [:run :cards-accessed] (fnil #(+ % (count (:discard corp))) 0))
+                           (when (:run @state)
+                             (swap! state update-in [:run :cards-accessed] (fnil #(+ % (count (:discard corp))) 0)))
                            (resolve-ability state :runner (choose-access (get-in @state [:corp :discard]) '(:archives)) card nil))}]
  :install-cost-bonus (req (if (and run (= (:server run) [:archives]) (= 0 (:position run)))
                             [:credit -7 :click -1] nil))
@@ -478,10 +485,10 @@ id,name,code
                        :prompt ""Use Jak Sinclair to make a run?""
                        :yes-ability ability}}}
  :abilities [ability]})"
-04009,John Masanori,"{:events {:successful-run {:req (req (first-event state side :successful-run))
+04009,John Masanori,"{:events {:successful-run {:req (req (first-event? state side :successful-run))
                            :msg ""draw 1 card"" :once-key :john-masanori-draw
                            :effect (effect (draw))}
-          :unsuccessful-run {:req (req (first-event state side :unsuccessful-run))
+          :unsuccessful-run {:req (req (first-event? state side :unsuccessful-run))
                              :delayed-completion true
                              :msg ""take 1 tag"" :once-key :john-masanori-tag
                              :effect (effect (tag-runner :runner eid 1))}}}"
@@ -683,7 +690,7 @@ id,name,code
                                                     (system-msg state side (str ""trashes "" target
                                                                                 "" cop"" (if (not= target 1) ""ies"" ""y"")
                                                                                 "" of "" title)))))}}}))]
-  {:events {:runner-install {:req (req (first-event state side :runner-install))
+  {:events {:runner-install {:req (req (first-event? state side :runner-install))
                              :delayed-completion true
                              :effect (effect (continue-ability
                                               (pphelper (:title target)
@@ -692,7 +699,7 @@ id,name,code
                                                              (vec)))
                                               card nil))}}})"
 10063,Patron,"(let [ability {:prompt ""Choose a server for Patron"" :choices (req (conj servers ""No server""))
-               :req (req (not (:server-target card)))
+               :req (req (and (not (click-spent? :runner state)) (not (used-this-turn? (:cid card) state))))
                :msg (msg ""target "" target)
                :effect (req (when (not= target ""No server"")
                               (update! state side (assoc card :server-target target))))}]
@@ -807,7 +814,10 @@ id,name,code
                                                                (count from) from) card nil)
                   (do (clear-wait-prompt state :corp)
                       (effect-completed state side eid card)))))
- :trash-effect {:effect (effect (mill :runner 3))}}"
+ :trash-effect {:effect (effect (system-msg :runner (str ""trashes ""
+                                            (join "", "" (map :title (take 3 (:deck runner))))
+                                            "" from their Stack due to Rolodex being trashed""))
+                                    (mill :runner 3))}}"
 07050,Sacrificial Clone,"{:prevent {:damage [:meat :net :brain]}
  :abilities [{:effect (req (doseq [c (concat (get-in runner [:rig :hardware])
                                              (filter #(not (has-subtype? % ""Virtual""))
@@ -874,8 +884,7 @@ id,name,code
                                 card nil))}]}"
 03054,Same Old Thing,"{:abilities [{:cost [:click 2]
               :req (req (and (not (seq (get-in @state [:runner :locked :discard])))
-                             (< 0 (count (filter #(is-type? % ""Event"")
-                                                 (get-in @state [:runner :discard]))))))
+                             (< 0 (count (filter #(is-type? % ""Event"") (:discard runner))))))
               :prompt ""Choose an event to play""
               :msg (msg ""play "" (:title target))
               :show-discard true
@@ -885,7 +894,7 @@ id,name,code
 02063,Scrubber,{:recurring 2}
 05048,Security Testing,"(let [ability {:prompt ""Choose a server for Security Testing"" :choices (req servers)
                :msg (msg ""target "" target)
-               :req (req (not (:server-target card)))
+               :req (req (and (not (click-spent? :runner state)) (not (used-this-turn? (:cid card) state))))
                :effect (effect (update! (assoc card :server-target target)))}]
   {:events {:runner-turn-begins ability
             :successful-run
@@ -1110,7 +1119,7 @@ id,name,code
               :effect (req (when (pos? (get-virus-counters state side target))
                              (add-counter state side card :virus -1)
                              (add-counter state side target :virus 1)))}]}"
-09036,Wasteland,"{:events {:runner-trash {:req (req (and (first-event state :runner :runner-trash) (:installed target)))
+09036,Wasteland,"{:events {:runner-trash {:req (req (and (first-event? state :runner :runner-trash) (:installed target)))
                   :effect (effect (gain :credit 1))
                   :msg ""to gain 1[Credit]""}}}"
 08108,Wireless Net Pavilion,"{:effect (effect (trash-resource-bonus -2))

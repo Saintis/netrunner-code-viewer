@@ -110,7 +110,7 @@ id,name,code
    :prompt ""Choose a server""
    :recurring 4
    :choices (req runnable-servers)
-   :effect (req (let [c (move state side (assoc card :zone '(:discard)) :play-area)]
+   :effect (req (let [c (move state side (assoc card :zone '(:discard)) :play-area {:force true})]
                   (card-init state side c false)
                   (game.core/run state side (make-eid state) target
                                  {:end-run {:delayed-completion true
@@ -261,6 +261,12 @@ id,name,code
 09053,Employee Strike,"{:msg ""disable the Corp's identity""
  :effect (effect (disable-identity :corp))
  :leave-play (effect (enable-identity :corp))}"
+11107,Encore,"{:req (req (and (some #{:hq} (:successful-run runner-reg))
+                (some #{:rd} (:successful-run runner-reg))
+                (some #{:archives} (:successful-run runner-reg))))
+ :effect (req (swap! state assoc-in [:runner :extra-turn] true)
+              (move state side (first (:play-area runner)) :rfg))
+ :msg ""take an additional turn after this one""}"
 11061,En Passant,"{:req (req (:successful-run runner-reg))
  :effect (req (let [runtgt (first (flatten (turn-events state side :run)))
                     serv (zone->name runtgt)]
@@ -713,6 +719,16 @@ id,name,code
                    (unregister-events state side card)))
  :events {:runner-phase-12 nil}})"
 06015,Paper Tripping,"{:msg ""remove all tags"" :effect (effect (lose :tag :all))}"
+11109,Peace in Our Time,"{:req (req (not (:scored-agenda corp-reg)))
+ :msg ""gain 10 [Credits]. The Corp gains 5 [Credits]""
+ :effect (req (gain state :runner :credit 10)
+              (gain state :corp :credit 5)
+              (apply prevent-run-on-server
+                     state card (get-zones @state))
+              (register-events state side
+                {:runner-turn-ends {:effect (req (apply enable-run-on-server state card (get-zones @state)))}}
+               (assoc card :zone '(:discard))))
+ :events {:runner-turn-ends nil}}"
 05036,Planned Assault,"{:msg (msg ""play "" (:title target))
  :choices (req (cancellable (filter #(and (has-subtype? % ""Run"")
                                           (<= (:cost %) (:credit runner))) (:deck runner)) :sorted))
@@ -957,7 +973,7 @@ id,name,code
 02081,Surge,"{:msg (msg ""place 2 virus tokens on "" (:title target))
  :choices {:req #(and (has-subtype? % ""Virus"") (:added-virus-counter %))}
  :effect (req (add-counter state :runner target :virus 2))}"
-11001,System Outage,"{:events {:corp-draw {:req (req (not (first-event state side :corp-draw)))
+11001,System Outage,"{:events {:corp-draw {:req (req (not (first-event? state side :corp-draw)))
                       :msg ""force the Corp to lose 1 [Credits]""
                       :effect (effect (lose :corp :credit 1))}}}"
 02047,Test Run,"{:prompt ""Install a program from your Stack or Heap?""

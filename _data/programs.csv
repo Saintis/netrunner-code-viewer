@@ -340,8 +340,13 @@ id,name,code
                                                        :hosted-programs (remove #(= (:cid target) %) (:hosted-programs card))))
                                        (lose :memory (:memoryunits target)))}}}"
 06039,LLDS Energy Regulator,"{:prevent {:trash [:hardware]}
- :abilities [{:cost [:credit 3] :msg ""prevent a hardware from being trashed""}
-             {:effect (effect (trash card {:cause :ability-cost})) :msg ""prevent a hardware from being trashed""}]}"
+ :abilities [{:cost [:credit 3]
+              :msg ""prevent a hardware from being trashed""
+              :effect (effect (trash-prevent :hardware 1))}
+             {:label ""[Trash]: Prevent a hardware from being trashed""
+              :msg ""prevent a hardware from being trashed""
+              :effect (effect (trash-prevent :hardware 1)
+                              (trash card {:cause :ability-cost}))}]}"
 01044,Magnum Opus,"{:abilities [{:cost [:click 1] :effect (effect (gain :credit 2)) :msg ""gain 2 [Credits]""}]}"
 01010,Medium,"{:events
  {:successful-run {:req (req (= target :rd))
@@ -497,7 +502,7 @@ id,name,code
           :card-moved {:req (req (some #{(:cid target)} (:hosted-programs card)))
                        :effect (effect (update! (assoc card :hosted-programs (remove #(= (:cid target) %) (:hosted-programs card))))
                                        (lose :memory (:memoryunits target)))}}}"
-11086,Reaver,"{:events {:runner-trash {:req (req (and (first-event state :runner :runner-trash) (installed? target)))
+11086,Reaver,"{:events {:runner-trash {:req (req (and (first-event? state :runner :runner-trash) (installed? target)))
                          :effect (effect (draw :runner 1))
                          :msg ""draw 1 card""}}}"
 04003,Rook,"{:abilities [{:cost [:click 1]
@@ -547,19 +552,23 @@ id,name,code
               :msg (msg ""host "" (:title target) "" and gain 1 [Credits]"")
               :effect (req (when (host state side card target)
                              (gain state side :credit 1)))}]}"
-03046,Self-modifying Code,"{:abilities [{:prompt ""Choose a program to install""
-              :msg (req (if (not= target ""No install"")
-                          (str ""install "" (:title target))
-                          (str ""shuffle their Stack"")))
-              :priority true
-              :choices (req (cancellable
-                              (conj (vec (sort-by :title (filter #(is-type? % ""Program"") (:deck runner))))
-                                    ""No install"")))
-              :cost [:credit 2]
-              :effect (req (trigger-event state side :searched-stack nil)
-                           (trash state side card {:cause :ability-cost})
-                           (shuffle! state side :deck)
-                           (when (not= target ""No install"") (runner-install state side target)))}]}"
+03046,Self-modifying Code,"{:abilities  [{:effect (req (when-completed (trash state side card {:cause :ability-cost})
+                                            (continue-ability state side
+                                                               {:prompt ""Choose a program to install""
+                                                                :msg (req (if (not= target ""No install"")
+                                                                            (str ""install "" (:title target))
+                                                                            (str ""shuffle their Stack"")))
+                                                                :priority true
+                                                                :choices (req (cancellable
+                                                                                (conj (vec (sort-by :title (filter #(is-type? % ""Program"")
+                                                                                                                   (:deck runner))))
+                                                                                      ""No install"")))
+                                                                :cost [:credit 2]
+                                                                :effect (req (trigger-event state side :searched-stack nil)
+                                                                             (trash state side card {:cause :ability-cost})
+                                                                             (shuffle! state side :deck)
+                                                                             (when (not= target ""No install"")
+                                                                               (runner-install state side target)))} card nil)))}]}"
 01028,Sneakdoor Beta,"{:abilities [{:cost [:click 1]
               :msg ""make a run on Archives""
               :makes-run true
@@ -607,6 +616,26 @@ id,name,code
                                (has-subtype? current-ice ""Barrier"")))
                 :label ""Swap the barrier ICE currently being encountered with a piece of ICE directly before or after it""
                 :effect (effect (resolve-ability (surf state current-ice) card nil))}]})"
+11104,Tapwrm,"(let [ability {:label ""Gain [Credits] (start of turn)""
+               :msg (msg ""gain "" (quot (:credit corp) 5) "" [Credits]"")
+               :once :per-turn
+               :req (req (:runner-phase-12 @state))
+               :effect (effect (gain :credit (quot (:credit corp) 5)))}]
+  {:req (req (some #{:hq :rd :archives} (:successful-run runner-reg)))
+   :flags {:drip-economy true}
+   :abilities [ability]
+   :events {:runner-turn-begins ability
+            :purge {:effect (effect (trash card))}}})"
+11105,Tracker,"(let [ability {:prompt ""Choose a server for Tracker"" :choices (req servers)
+               :msg (msg ""target "" target)
+               :req (req (not (:server-target card)))
+               :effect (effect (update! (assoc card :server-target target)))}]
+  {:abilities [{:label ""Make a run on targeted server"" :cost [:click 1 :credit 2]
+                :req (req (:server-target card))
+                :msg (msg ""make a run on "" (:server-target card) "". Prevent the first subroutine that would resolve from resolving"")
+                :effect (effect (run (:server-target card) nil card))}]
+   :events {:runner-turn-begins ability
+            :runner-turn-ends {:effect (effect (update! (dissoc card :server-target)))}}})"
 08081,Trope,"{:events {:runner-turn-begins {:effect (effect (add-counter card :power 1))}}
  :abilities [{:cost [:click 1]
               :label ""[Click], remove Trope from the game: Reshuffle cards from Heap back into Stack""
